@@ -67,13 +67,22 @@ const MOCK_BADGES: Badge[] = [
   },
 ];
 
+const MIN_SHEET_HEIGHT = 200;
+const DEFAULT_MAX_HEIGHT = 600;
+
 export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreenProps) {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [maxSheetHeight, setMaxSheetHeight] = useState(() =>
+    typeof window !== "undefined" ? Math.min(window.innerHeight * 0.85, window.innerHeight - 120) : DEFAULT_MAX_HEIGHT
+  );
+  const [sheetHeight, setSheetHeight] = useState(MIN_SHEET_HEIGHT);
   const mapRef = useRef<HTMLDivElement>(null);
   const naverMapRef = useRef<naver.maps.Map | null>(null);
   const markersRef = useRef<naver.maps.Marker[]>([]);
+  const dragStartYRef = useRef<number | null>(null);
+  const startHeightRef = useRef<number>(MIN_SHEET_HEIGHT);
+  const isDraggingRef = useRef(false);
 
   // Load Naver Maps script and initialize map
   useEffect(() => {
@@ -203,6 +212,17 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
     };
   }, [theme]);
 
+  useEffect(() => {
+    const updateMaxHeight = () => {
+      const height = Math.min(window.innerHeight * 0.85, window.innerHeight - 120);
+      setMaxSheetHeight(height);
+      setSheetHeight((prev) => Math.min(Math.max(prev, MIN_SHEET_HEIGHT), height));
+    };
+    updateMaxHeight();
+    window.addEventListener("resize", updateMaxHeight);
+    return () => window.removeEventListener("resize", updateMaxHeight);
+  }, []);
+
   return (
     <div className={`h-screen flex flex-col overflow-hidden ${
       theme === "dark" ? "bg-[#0a0e1a]" : "bg-white"
@@ -269,22 +289,52 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
 
       {/* Bottom sheet with recent badges */}
       <div
-        className={`relative rounded-t-3xl border-t-2 shadow-2xl transition-all duration-300 ${
-          sheetExpanded ? "h-96" : "h-64"
-        } ${
+        className={`relative rounded-t-3xl border-t-2 shadow-2xl transition-all duration-200 ${
           theme === "dark"
             ? "bg-slate-900 border-slate-700"
             : "bg-white border-gray-200"
         }`}
+        style={{ height: `${sheetHeight}px` }}
       >
         {/* Drag handle */}
         <button
-          onClick={() => setSheetExpanded(!sheetExpanded)}
-          className="w-full py-3 flex items-center justify-center"
+          onClick={() =>
+            setSheetHeight((current) =>
+              current <= (MIN_SHEET_HEIGHT + maxSheetHeight) / 2 ? maxSheetHeight : MIN_SHEET_HEIGHT
+            )
+          }
+          onPointerDown={(event) => {
+            dragStartYRef.current = event.clientY;
+            startHeightRef.current = sheetHeight;
+            isDraggingRef.current = true;
+            const handlePointerMove = (moveEvent: PointerEvent) => {
+              if (!isDraggingRef.current || dragStartYRef.current === null) return;
+              const delta = dragStartYRef.current - moveEvent.clientY;
+              const nextHeight = Math.min(
+                Math.max(startHeightRef.current + delta, MIN_SHEET_HEIGHT),
+                maxSheetHeight
+              );
+              setSheetHeight(nextHeight);
+            };
+            const handlePointerUp = () => {
+              isDraggingRef.current = false;
+              dragStartYRef.current = null;
+              window.removeEventListener("pointermove", handlePointerMove);
+              window.removeEventListener("pointerup", handlePointerUp);
+              setSheetHeight((current) =>
+                current < (MIN_SHEET_HEIGHT + maxSheetHeight) / 2 ? MIN_SHEET_HEIGHT : maxSheetHeight
+              );
+            };
+            window.addEventListener("pointermove", handlePointerMove);
+            window.addEventListener("pointerup", handlePointerUp);
+          }}
+          className="w-full py-3 flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
         >
-          <div className={`w-12 h-1 rounded-full ${
-            theme === "dark" ? "bg-slate-600" : "bg-gray-300"
-          }`} />
+          <div
+            className={`w-12 h-1 rounded-full ${
+              theme === "dark" ? "bg-slate-600" : "bg-gray-300"
+            } transition-colors`}
+          />
         </button>
 
         {/* Sheet header */}
@@ -294,7 +344,10 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
         </div>
 
         {/* Badge list */}
-        <div className="px-6 pb-6 space-y-3 overflow-y-auto" style={{ maxHeight: sheetExpanded ? "280px" : "140px" }}>
+        <div
+          className="px-6 pb-6 space-y-3 overflow-y-auto"
+          style={{ maxHeight: `${Math.max(sheetHeight - 140, 120)}px` }}
+        >
           {MOCK_BADGES.map((badge) => (
             <div
               key={badge.id}

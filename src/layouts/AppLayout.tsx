@@ -18,6 +18,7 @@ function BottomNav({ theme }: { theme: ThemeMode }) {
       className={`fixed bottom-0 left-0 right-0 border-t z-50 ${
         theme === "dark" ? "bg-slate-900 border-slate-800" : "bg-white border-gray-200"
       }`}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="grid grid-cols-4 h-16">
         <button
@@ -89,9 +90,13 @@ function BottomNav({ theme }: { theme: ThemeMode }) {
 }
 
 export function AppLayout({ children, theme }: { children: ReactNode; theme: ThemeMode }) {
+  const contentPaddingBottom = "calc(4.5rem + env(safe-area-inset-bottom, 0px))";
+
   return (
-    <div className="relative min-h-screen pb-16">
-      <div className="pb-16">{children}</div>
+    <div className="relative min-h-screen">
+      <main className="min-h-screen" style={{ paddingBottom: contentPaddingBottom }}>
+        {children}
+      </main>
       <BottomNav theme={theme} />
     </div>
   );
