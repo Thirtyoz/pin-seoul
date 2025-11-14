@@ -27,6 +27,7 @@ export default function App() {
   const [userInterests, setUserInterests] = useState<string[]>(["#카페투어", "#야경", "#한강"]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const { setUser } = useAppStore();
+  console.log('ss')
 
   // Check for existing session on mount and handle OAuth callback
   useEffect(() => {
