@@ -1,7 +1,7 @@
 import { MapPin, Plus, User, Sparkles, ChevronUp } from "lucide-react";
-import { Button } from "./ui/button";
-import { useState, useEffect, useRef } from "react";
-import { BadgeDetailScreen } from "./BadgeDetailScreen";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { ImageWithFallback } from "@/components/common/ImageWithFallback";
 
 interface Badge {
   id: number;
