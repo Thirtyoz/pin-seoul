@@ -1,6 +1,7 @@
 import { MapPin, Plus, User, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { loadNaverMapsScript } from "@/utils/loadNaverMaps";
+import { BadgeDetailScreen } from "../badge/BadgeDetailScreen";
 
 interface Badge {
   id: number;
