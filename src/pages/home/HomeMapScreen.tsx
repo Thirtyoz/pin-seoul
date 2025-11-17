@@ -1,8 +1,9 @@
-import { MapPin, Plus, User, Sparkles } from "lucide-react";
+import { MapPin, Plus, User, Sparkles, Navigation } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { loadNaverMapsScript } from "@/utils/loadNaverMaps";
 import { BadgeDetailScreen } from "../badge/BadgeDetailScreen";
-// import { fetchAllLocations } from "@/services/locationService";
+import { FloatingPanel, type FloatingPanelRef, JumboTabs } from "antd-mobile";
+import { fetchAllLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types/location";
 
 interface Badge {
@@ -21,24 +22,16 @@ interface HomeMapScreenProps {
   theme: "light" | "dark";
 }
 
-const MIN_SHEET_HEIGHT = 200;
-const DEFAULT_MAX_HEIGHT = 600;
-
 export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreenProps) {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [maxSheetHeight, setMaxSheetHeight] = useState(() =>
-    typeof window !== "undefined" ? Math.min(window.innerHeight * 0.85, window.innerHeight - 120) : DEFAULT_MAX_HEIGHT
-  );
-  const [sheetHeight, setSheetHeight] = useState(MIN_SHEET_HEIGHT);
+  const [activeTab, setActiveTab] = useState('all');
   const mapRef = useRef<HTMLDivElement>(null);
   const naverMapRef = useRef<naver.maps.Map | null>(null);
   const markersRef = useRef<naver.maps.Marker[]>([]);
-  const dragStartYRef = useRef<number | null>(null);
-  const startHeightRef = useRef<number>(MIN_SHEET_HEIGHT);
-  const isDraggingRef = useRef(false);
+  const floatingPanelRef = useRef<FloatingPanelRef>(null);
 
-  const [locations] = useState<MapLocation[]>([
+  const [locations, setLocations] = useState<MapLocation[]>([
     {
       id: '1',
       name: '남산타워',
@@ -50,24 +43,53 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
       imageUrl: '/penguin.png'
     }
   ]);
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 내 배지로 표시할 장소들 (conts_name 기준)
+  const MY_BADGES = ['창덕궁', '동대문디자인플라자(DDP)', '서울어린이대공원 음악분수'];
+
+  // 탭에 따라 필터링된 장소 목록
+  const filteredLocations = (() => {
+    if (activeTab === 'all') {
+      // 내 배지: MY_BADGES에 포함된 장소만
+      return locations.filter(location => MY_BADGES.includes(location.contsName || ''));
+    }
+    if (activeTab === 'ai') {
+      // AI 추천: 랜덤으로 40개 선택
+      const shuffled = [...locations].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, 40);
+    }
+    if (activeTab === 'night') {
+      // 야경: night_view_spots 테이블 데이터만
+      return locations.filter(location => location.type === 'night_view');
+    }
+    if (activeTab === 'autumn') {
+      // 단풍길: dangil_paths 테이블 데이터만
+      return locations.filter(location => location.type === 'path');
+    }
+    if (activeTab === 'festival') {
+      // 축제: festivals 테이블 데이터만
+      return locations.filter(location => location.type === 'festival');
+    }
+    return locations;
+  })();
 
   // API에서 데이터 가져오기 (주석처리)
-  // useEffect(() => {
-  //   const loadLocations = async () => {
-  //     setIsLoading(true);
-  //     try {
-  //       const data = await fetchAllLocations();
-  //       setLocations(data);
-  //       console.log(`Loaded ${data.length} locations from Supabase`);
-  //     } catch (error) {
-  //       console.error('Error loading locations:', error);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-  //   loadLocations();
-  // }, []);
+  useEffect(() => {
+    const loadLocations = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchAllLocations();
+        setLocations(data);
+        console.log(`Loaded ${data.length} locations from Supabase`);
+      } catch (error) {
+        console.error('Error loading locations:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadLocations();
+  }, []);
 
   const [mapInitialized, setMapInitialized] = useState(false);
 
@@ -93,7 +115,7 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
           minZoom: 10,
           maxZoom: 17,
           bounds: seoulBounds,
-          zoomControl: true,
+          zoomControl: false,
           zoomControlOptions: {
             position: naver.maps.Position.TOP_RIGHT,
           },
@@ -168,8 +190,8 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
 
   // Add markers when map is initialized and locations are loaded
   useEffect(() => {
-    if (!mapInitialized || !naverMapRef.current || !window.naver || locations.length === 0) {
-      console.log('Map not ready or no locations:', { mapInitialized, hasMap: !!naverMapRef.current, hasNaver: !!window.naver, locationsCount: locations.length });
+    if (!mapInitialized || !naverMapRef.current || !window.naver || filteredLocations.length === 0) {
+      console.log('Map not ready or no locations:', { mapInitialized, hasMap: !!naverMapRef.current, hasNaver: !!window.naver, locationsCount: filteredLocations.length });
       return;
     }
 
@@ -179,24 +201,57 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
 
-    // Add new markers for real locations
-    const newMarkers = locations.map((location) => {
+    // Add new markers for filtered locations
+    const newMarkers = filteredLocations.map((location) => {
+      // Check if this is one of the 내 배지 locations with custom image
+      let badgeImageUrl = '';
+      if (activeTab === 'all') {
+        if (location.contsName?.includes('어린이대공원')) {
+          badgeImageUrl = '/penguin.png';
+        } else if (location.contsName?.includes('동대문디자인플라자') || location.contsName === 'DDP') {
+          badgeImageUrl = '/ddp.png';
+        } else if (location.contsName?.includes('창덕궁')) {
+          badgeImageUrl = '/changduck.png';
+        }
+      }
+
       // Determine marker style based on location type
-      const isPaths = location.type === 'path';
-      const markerColor = isPaths ? 'bg-green-500' : 'bg-orange-500';
-      const markerIcon = isPaths ? '🚶' : '🎉';
+      let markerColor = 'bg-orange-500';
+      let markerIcon = '🎉';
+
+      if (location.type === 'path') {
+        markerColor = 'bg-green-500';
+        markerIcon = '🚶';
+      } else if (location.type === 'night_view') {
+        markerColor = 'bg-purple-500';
+        markerIcon = '🌙';
+      }
 
       // Create custom HTML marker
       const markerElement = document.createElement('div');
       markerElement.className = 'custom-marker';
-      markerElement.innerHTML = `
-        <div class="relative ${theme === "dark" ? "drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]" : "drop-shadow-lg"}">
-          <div class="${markerColor} w-12 h-12 rounded-xl flex flex-col items-center justify-center border-2 border-white/50 shadow-lg transform transition-all hover:scale-110 cursor-pointer">
-            <span class="text-xl filter drop-shadow-sm">${markerIcon}</span>
+
+      if (badgeImageUrl) {
+        // Use image marker for 내 배지
+        markerElement.innerHTML = `
+          <div class="relative ${theme === "dark" ? "drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]" : "drop-shadow-lg"}">
+            <div class="bg-white w-12 h-12 rounded-xl flex items-center justify-center border-2 border-white/50 shadow-lg transform transition-all hover:scale-110 cursor-pointer overflow-hidden">
+              <img src="${badgeImageUrl}" alt="badge" class="w-full h-full object-cover" />
+            </div>
+            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-2 rounded-full blur-sm ${theme === "dark" ? "bg-black/40" : "bg-black/20"}"></div>
           </div>
-          <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-2 rounded-full blur-sm ${theme === "dark" ? "bg-black/40" : "bg-black/20"}"></div>
-        </div>
-      `;
+        `;
+      } else {
+        // Use emoji marker for others
+        markerElement.innerHTML = `
+          <div class="relative ${theme === "dark" ? "drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]" : "drop-shadow-lg"}">
+            <div class="${markerColor} w-12 h-12 rounded-xl flex flex-col items-center justify-center border-2 border-white/50 shadow-lg transform transition-all hover:scale-110 cursor-pointer">
+              <span class="text-xl filter drop-shadow-sm">${markerIcon}</span>
+            </div>
+            <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-2 rounded-full blur-sm ${theme === "dark" ? "bg-black/40" : "bg-black/20"}"></div>
+          </div>
+        `;
+      }
 
       const marker = new naver.maps.Marker({
         position: new naver.maps.LatLng(location.location.lat, location.location.lng),
@@ -213,14 +268,28 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
         console.log('Selected location:', location);
 
         // Convert MapLocation to Badge format for modal
+        let badgeColor = 'orange';
+        let badgeEmoji = '🎉';
+        let badgeTag = '축제';
+
+        if (location.type === 'path') {
+          badgeColor = 'green';
+          badgeEmoji = '🚶';
+          badgeTag = '산책로';
+        } else if (location.type === 'night_view') {
+          badgeColor = 'purple';
+          badgeEmoji = '🌙';
+          badgeTag = '야경';
+        }
+
         const badge: Badge = {
           id: parseInt(location.id) || 1,
           name: location.name,
           location: location.location,
           date: location.date || new Date().toLocaleDateString('ko-KR'),
-          color: location.type === 'path' ? 'green' : 'orange',
-          emoji: location.type === 'path' ? '🚶' : '🎉',
-          tags: [location.type === 'path' ? '산책로' : '축제']
+          color: badgeColor,
+          emoji: badgeEmoji,
+          tags: [badgeTag]
         };
 
         setSelectedBadge(badge);
@@ -231,18 +300,10 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
     });
 
     markersRef.current = newMarkers;
-    console.log(`Added ${newMarkers.length} markers to map`);
-  }, [mapInitialized, locations, theme, setSelectedBadge, setIsModalOpen]);
+  }, [mapInitialized, filteredLocations, theme, setSelectedBadge, setIsModalOpen]);
 
   useEffect(() => {
-    const updateMaxHeight = () => {
-      const height = Math.min(window.innerHeight * 0.85, window.innerHeight - 120);
-      setMaxSheetHeight(height);
-      setSheetHeight((prev) => Math.min(Math.max(prev, MIN_SHEET_HEIGHT), height));
-    };
-    updateMaxHeight();
-    window.addEventListener("resize", updateMaxHeight);
-    return () => window.removeEventListener("resize", updateMaxHeight);
+    floatingPanelRef.current?.setHeight(320, { immediate: true });
   }, []);
 
   return (
@@ -274,181 +335,190 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
         {/* Naver Map Container */}
         <div id="map" ref={mapRef} className="absolute inset-0 w-full h-full" />
 
-        {/* AI Recommendation banner */}
-        <div className="absolute top-4 left-4 right-4 z-10">
-          <div className={`rounded-2xl p-3 flex items-center gap-3 shadow-sm border ${
-            theme === "dark"
-              ? "bg-slate-900/95 border-slate-700"
-              : "bg-white border-gray-200"
-          }`}>
-            <Sparkles className="w-5 h-5 text-[#FF6B35] flex-shrink-0" strokeWidth={1.5} />
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm ${theme === "dark" ? "text-white" : "text-black"}`}>
-                AI 추천: 오늘은 <span className="font-medium">'망원 한강공원'</span> 어때요?
-              </p>
-            </div>
-            <button
-              onClick={() => onNavigate("ai-recommend")}
-              className={`px-3 py-1 rounded-lg text-xs whitespace-nowrap transition-colors ${
-                theme === "dark"
-                  ? "bg-slate-800 hover:bg-slate-700 text-white"
-                  : "bg-gray-100 hover:bg-gray-200 text-black"
-              }`}
-            >
-              보기
-            </button>
-          </div>
+
+
+        {/* Category Tabs */}
+        <div className="absolute top-4 left-0 right-0 z-10">
+          <JumboTabs
+            activeKey={activeTab}
+            onChange={(key) => setActiveTab(key)}
+            className="category-tabs"
+          >
+            <JumboTabs.Tab title='내 배지' key='all' />
+            <JumboTabs.Tab title='AI추천' key='ai' />
+            <JumboTabs.Tab title='야경' key='night' />
+            <JumboTabs.Tab title='단풍길' key='autumn' />
+            <JumboTabs.Tab title='축제' key='festival' />
+            
+          </JumboTabs>
         </div>
+
+        {/* My Location button */}
+        <button
+          onClick={() => {
+            if (navigator.geolocation && naverMapRef.current) {
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const { latitude, longitude } = position.coords;
+                  naverMapRef.current?.setCenter(new naver.maps.LatLng(latitude, longitude));
+                  naverMapRef.current?.setZoom(15);
+                },
+                (error) => {
+                  console.error('Error getting location:', error);
+                  alert('위치 정보를 가져올 수 없습니다.');
+                }
+              );
+            }
+          }}
+          className={`absolute bottom-24 right-6 w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-all duration-200 z-10 ${
+            theme === "dark" ? "bg-slate-800 text-white" : "bg-white text-black"
+          }`}
+        >
+          <Navigation className="w-5 h-5" strokeWidth={1.5} />
+        </button>
 
         {/* Floating action button */}
         <button
           onClick={() => onNavigate("create-badge")}
-          className="absolute bottom-24 right-6 w-14 h-14 rounded-full bg-[#FF6B35] shadow-sm flex items-center justify-center group hover:bg-[#E55A2B] transition-all duration-200"
+          className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-[#FF6B35] shadow-sm flex items-center justify-center group hover:bg-[#E55A2B] transition-all duration-200 z-10"
         >
           <Plus className="w-7 h-7 text-white group-hover:rotate-90 transition-transform duration-300" strokeWidth={1.5} />
         </button>
-      </div>
 
-      {/* Bottom sheet with recent badges */}
-      <div
-        className={`relative rounded-t-3xl border-t-2 shadow-2xl transition-all duration-200 ${
-          theme === "dark"
-            ? "bg-slate-900 border-slate-700"
-            : "bg-white border-gray-200"
-        }`}
-        style={{ height: `${sheetHeight}px` }}
-      >
-        {/* Drag handle */}
-        <button
-          onClick={() =>
-            setSheetHeight((current) =>
-              current <= (MIN_SHEET_HEIGHT + maxSheetHeight) / 2 ? maxSheetHeight : MIN_SHEET_HEIGHT
-            )
-          }
-          onPointerDown={(event) => {
-            dragStartYRef.current = event.clientY;
-            startHeightRef.current = sheetHeight;
-            isDraggingRef.current = true;
-            const handlePointerMove = (moveEvent: PointerEvent) => {
-              if (!isDraggingRef.current || dragStartYRef.current === null) return;
-              const delta = dragStartYRef.current - moveEvent.clientY;
-              const nextHeight = Math.min(
-                Math.max(startHeightRef.current + delta, MIN_SHEET_HEIGHT),
-                maxSheetHeight
-              );
-              setSheetHeight(nextHeight);
-            };
-            const handlePointerUp = () => {
-              isDraggingRef.current = false;
-              dragStartYRef.current = null;
-              window.removeEventListener("pointermove", handlePointerMove);
-              window.removeEventListener("pointerup", handlePointerUp);
-              setSheetHeight((current) =>
-                current < (MIN_SHEET_HEIGHT + maxSheetHeight) / 2 ? MIN_SHEET_HEIGHT : maxSheetHeight
-              );
-            };
-            window.addEventListener("pointermove", handlePointerMove);
-            window.addEventListener("pointerup", handlePointerUp);
-          }}
-          className="w-full py-3 flex items-center justify-center cursor-grab active:cursor-grabbing select-none"
+        {/* FloatingPanel with location list */}
+        <FloatingPanel
+          ref={floatingPanelRef}
+          anchors={[120, 320, window.innerHeight - 80]}
+          className={theme === "dark" ? "floating-panel-dark" : "floating-panel-light"}
         >
-          <div
-            className={`w-12 h-1 rounded-full ${
-              theme === "dark" ? "bg-slate-600" : "bg-gray-300"
-            } transition-colors`}
-          />
-        </button>
+          <div className={`px-6 pb-3 flex items-center justify-between ${
+            theme === "dark" ? "text-white" : "text-black"
+          }`}>
+            <h3>서울 명소</h3>
+            <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
+              {isLoading ? '로딩 중...' : `${filteredLocations.length}개`}
+            </span>
+          </div>
 
-        {/* Sheet header */}
-        <div className="px-6 pb-3 flex items-center justify-between">
-          <h3 className={theme === "dark" ? "text-white" : "text-black"}>서울 명소</h3>
-          <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-            {isLoading ? '로딩 중...' : `${locations.length}개`}
-          </span>
-        </div>
-
-        {/* Location list */}
-        <div className="px-6 pb-6 space-y-3 overflow-y-auto"
-          style={{ maxHeight: `${Math.max(sheetHeight - 140, 120)}px` }}
-          >
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                데이터를 불러오는 중...
-              </div>
-            </div>
-          ) : locations.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                데이터가 없습니다
-              </div>
-            </div>
-          ) : locations.length > 0 ? (
-            <div
-              key={locations[0].id}
-              onClick={() => {
-                const firstLocation = locations[0];
-
-                // Convert MapLocation to Badge format for modal
-                const badge: Badge = {
-                  id: parseInt(firstLocation.id) || 1,
-                  name: firstLocation.name,
-                  location: firstLocation.location,
-                  date: firstLocation.date || new Date().toLocaleDateString('ko-KR'),
-                  color: firstLocation.type === 'path' ? 'green' : 'orange',
-                  emoji: firstLocation.type === 'path' ? '🚶' : '🎉',
-                  tags: [firstLocation.type === 'path' ? '산책로' : '축제']
-                };
-
-                setSelectedBadge(badge);
-                setIsModalOpen(true);
-
-                if (naverMapRef.current) {
-                  naverMapRef.current.setCenter(
-                    new naver.maps.LatLng(firstLocation.location.lat, firstLocation.location.lng)
-                  );
-                  naverMapRef.current.setZoom(15);
-                }
-              }}
-              className={`w-full rounded-xl p-3 flex items-center gap-3 transition-colors border cursor-pointer ${
-                theme === "dark"
-                  ? "bg-slate-800/50 hover:bg-slate-800 border-slate-700"
-                  : "bg-white hover:bg-gray-50 border-gray-200"
-              }`}
-            >
-              {/* Location image */}
-              <div className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden border-2 border-white/50 shadow-lg">
-                <img
-                  src="/penguin.png"
-                  alt={locations[0].name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <p className={`text-sm mb-1 truncate font-medium ${theme === "dark" ? "text-white" : "text-black"}`}>
-                  {locations[0].name}
-                </p>
-                <p className={`text-xs mb-1 truncate ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                  {locations[0].address || locations[0].description}
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    locations[0].type === 'path'
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-orange-500/20 text-orange-400'
-                  }`}>
-                    {locations[0].type === 'path' ? '산책로' : '축제'}
-                  </span>
-                  {locations[0].date && (
-                    <span className={`text-xs ${theme === "dark" ? "text-slate-500" : "text-gray-500"}`}>
-                      {locations[0].date}
-                    </span>
-                  )}
+          {/* Location list */}
+          <div className="px-6 pb-6 space-y-3 overflow-y-auto" style={{ maxHeight: '60vh' }}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
+                  데이터를 불러오는 중...
                 </div>
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : filteredLocations.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
+                  데이터가 없습니다
+                </div>
+              </div>
+            ) : (
+              filteredLocations.map((location) => (
+                <div
+                  key={location.id}
+                  onClick={() => {
+                    // Convert MapLocation to Badge format for modal
+                    let badgeColor = 'orange';
+                    let badgeEmoji = '🎉';
+                    let badgeTag = '축제';
+
+                    if (location.type === 'path') {
+                      badgeColor = 'green';
+                      badgeEmoji = '🚶';
+                      badgeTag = '산책로';
+                    } else if (location.type === 'night_view') {
+                      badgeColor = 'purple';
+                      badgeEmoji = '🌙';
+                      badgeTag = '야경';
+                    }
+
+                    const badge: Badge = {
+                      id: parseInt(location.id) || 1,
+                      name: location.name,
+                      location: location.location,
+                      date: location.date || new Date().toLocaleDateString('ko-KR'),
+                      color: badgeColor,
+                      emoji: badgeEmoji,
+                      tags: [badgeTag]
+                    };
+
+                    setSelectedBadge(badge);
+                    setIsModalOpen(true);
+
+                    if (naverMapRef.current) {
+                      naverMapRef.current.setCenter(
+                        new naver.maps.LatLng(location.location.lat, location.location.lng)
+                      );
+                      naverMapRef.current.setZoom(15);
+                    }
+                  }}
+                  className={`w-full rounded-xl p-3 flex items-center gap-3 transition-colors border cursor-pointer ${
+                    theme === "dark"
+                      ? "bg-slate-800/50 hover:bg-slate-800 border-slate-700"
+                      : "bg-white hover:bg-gray-50 border-gray-200"
+                  }`}
+                >
+                  {/* Location image */}
+                  <div className={`w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden shadow-lg ${
+                    // 내 배지 탭이고 커스텀 이미지가 있는 경우 배경 흰색
+                    activeTab === 'all' && (location.contsName?.includes('어린이대공원') || location.contsName?.includes('동대문디자인플라자') || location.contsName?.includes('창덕궁'))
+                      ? 'bg-white'
+                      : location.type === 'path'
+                      ? 'bg-gradient-to-br from-green-400 to-green-600'
+                      : location.type === 'night_view'
+                      ? 'bg-gradient-to-br from-purple-400 to-purple-600'
+                      : 'bg-gradient-to-br from-orange-400 to-orange-600'
+                  }`}>
+                    {(() => {
+                      if (activeTab === 'all') {
+                        if (location.contsName?.includes('어린이대공원')) {
+                          return <img src="/penguin.png" alt={location.name} className="w-full h-full object-cover" />;
+                        } else if (location.contsName?.includes('동대문디자인플라자') || location.contsName === 'DDP') {
+                          return <img src="/ddp.png" alt={location.name} className="w-full h-full object-cover" />;
+                        } else if (location.contsName?.includes('창덕궁')) {
+                          return <img src="/changduck.png" alt={location.name} className="w-full h-full object-cover" />;
+                        }
+                      }
+                      return (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-2xl filter drop-shadow-sm">
+                            {location.type === 'path' ? '🚶' : location.type === 'night_view' ? '🌙' : '🎉'}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className={`text-sm mb-1 truncate font-medium ${theme === "dark" ? "text-white" : "text-black"}`}>
+                      {location.name}
+                    </p>
+                    <p className={`text-xs mb-1 truncate ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
+                      {location.address || location.description}
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        location.type === 'path'
+                          ? 'bg-green-500/20 text-green-400'
+                          : location.type === 'night_view'
+                          ? 'bg-purple-500/20 text-purple-400'
+                          : 'bg-orange-500/20 text-orange-400'
+                      }`}>
+                        {location.type === 'path' ? '산책로' : location.type === 'night_view' ? '야경' : '축제'}
+                      </span>
+                      {location.date && (
+                        <span className={`text-xs ${theme === "dark" ? "text-slate-500" : "text-gray-500"}`}>
+                          {location.date}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </FloatingPanel>
       </div>
 
       {/* Badge Detail Modal */}

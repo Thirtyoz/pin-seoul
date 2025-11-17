@@ -42,11 +42,11 @@ export function BadgeDetailScreen({ badge, isOpen, onClose, theme }: BadgeDetail
         style={{ zIndex: 9999, maxHeight: '85vh' }}
       >
         {/* Drag handle */}
-        <div className="w-full py-3 flex items-center justify-center flex-shrink-0">
+        {/* <div className="w-full py-3 flex items-center justify-center flex-shrink-0">
           <div className={`w-12 h-1 rounded-full ${
             theme === "dark" ? "bg-slate-600" : "bg-gray-300"
           }`} />
-        </div>
+        </div> */}
 
         {/* Header */}
         <div className={`px-6 py-4 flex items-center justify-between border-b flex-shrink-0 ${
@@ -161,7 +161,7 @@ export function BadgeDetailScreen({ badge, isOpen, onClose, theme }: BadgeDetail
           </div>
 
           {/* Mini map */}
-          <div className={`mt-6 rounded-2xl p-4 border ${
+          {/* <div className={`mt-6 rounded-2xl p-4 border ${
             theme === "dark" ? "bg-slate-800/50 border-slate-700" : "bg-gray-50 border-gray-200"
           }`}>
             <p className={`text-sm mb-3 ${theme === "dark" ? "text-white" : "text-black"}`}>지도에서 보기</p>
@@ -182,7 +182,7 @@ export function BadgeDetailScreen({ badge, isOpen, onClose, theme }: BadgeDetail
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Bottom actions */}

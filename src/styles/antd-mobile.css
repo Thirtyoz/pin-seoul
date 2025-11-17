@@ -1,0 +1,89 @@
+/* Ant Design Mobile FloatingPanel Customization */
+
+.adm-floating-panel {
+  border-radius: 24px 24px 0 0 !important;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1) !important;
+  z-index: 40 !important;
+  /* Bottom navigation has z-50, so FloatingPanel should be below it */
+}
+
+.floating-panel-light {
+  background: white !important;
+}
+
+.floating-panel-dark {
+  background: #0f172a !important;
+}
+
+/* JumboTabs Customization */
+
+.category-tabs .adm-jumbo-tabs {
+  background: transparent !important;
+  padding: 0 16px !important;
+  --gap: 6px !important;
+  gap: 6px !important;
+}
+
+.category-tabs .adm-jumbo-tabs-header {
+  gap: 6px !important;
+  padding: 0 !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab-list {
+  gap: 6px !important;
+  padding: 0 !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab-wrapper {
+  gap: 6px !important;
+  padding: 0 !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab-wrapper:first-child {
+  margin-left: 4px !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab-wrapper:last-child {
+  margin-right: 4px !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab {
+  background: white !important;
+  border-radius: 8px !important;
+  padding: 4px 10px !important;
+  margin: 0 !important;
+  width: 100% !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.2s !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab-active {
+  background: #FF6B35 !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab-title {
+  color: #374151 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+.category-tabs .adm-jumbo-tabs-tab-active .adm-jumbo-tabs-tab-title {
+  color: white !important;
+}
+
+.adm-floating-panel-header {
+  padding-top: 12px !important;
+  padding-bottom: 8px !important;
+}
+
+.adm-floating-panel-bar {
+  width: 48px !important;
+  height: 4px !important;
+  background: #d1d5db !important;
+  border-radius: 9999px !important;
+}
+
+.floating-panel-dark .adm-floating-panel-bar {
+  background: #475569 !important;
+}

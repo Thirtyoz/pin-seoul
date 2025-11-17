@@ -124,29 +124,11 @@
 }
 
 /* ==================== */
-/* Modal & Sheets */
+/* Modal */
 /* ==================== */
 
 .modal-overlay {
   @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-opacity duration-300;
-}
-
-.bottom-sheet {
-  @apply fixed left-0 right-0 bottom-0 rounded-t-3xl shadow-2xl transition-all duration-300 z-50;
-}
-
-.bottom-sheet-light {
-  @apply bg-white border-t-2 border-gray-200;
-}
-
-.bottom-sheet-dark {
-  @apply bg-[#0a0e1a] border-t-2 border-slate-700;
-}
-
-.bottom-sheet-handle {
-  @apply w-12 h-1 bg-gray-300 dark:bg-slate-600 rounded-full mx-auto;
-  margin-top: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
 }
 
 /* ==================== */

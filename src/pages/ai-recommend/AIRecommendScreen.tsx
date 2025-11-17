@@ -2,6 +2,7 @@ import { ArrowLeft, MapPin, Star, Navigation, Bookmark, Map, List } from "lucide
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { ImageWithFallback } from "@/components/common/ImageWithFallback";
+import { FloatingPanel } from "antd-mobile";
 
 interface Recommendation {
   id: string;
@@ -244,18 +245,19 @@ export function AIRecommendScreen({ onBack }: AIRecommendScreenProps) {
             )}
           </div>
 
-          {/* Bottom sheet with list */}
-          <div className="bg-white border-t border-gray-200 h-48">
-            <div className="w-full py-3 flex items-center justify-center">
-              <div className="w-12 h-1 bg-gray-300 rounded-full" />
-            </div>
+          {/* FloatingPanel with AI recommendations */}
+          <FloatingPanel
+            anchors={[100, window.innerHeight * 0.4, window.innerHeight - 80]}
+            defaultHeight={window.innerHeight * 0.4}
+            className="floating-panel-light"
+          >
             <div className="px-6 pb-3 flex items-center justify-between mb-3">
               <h3 className="text-black">AI 추천 장소</h3>
               <span className="text-gray-600 text-sm">
                 {RECOMMENDATIONS.filter((r) => r.isNew).length}개
               </span>
             </div>
-            <div className="px-6 pb-6 space-y-2 overflow-y-auto max-h-32">
+            <div className="px-6 pb-6 space-y-2 overflow-y-auto" style={{ maxHeight: '40vh' }}>
               {RECOMMENDATIONS.filter((r) => r.isNew).map((spot) => (
                 <button
                   key={spot.id}
@@ -271,7 +273,7 @@ export function AIRecommendScreen({ onBack }: AIRecommendScreenProps) {
                 </button>
               ))}
             </div>
-          </div>
+          </FloatingPanel>
         </>
       )}
 

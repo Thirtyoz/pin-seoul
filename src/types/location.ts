@@ -52,10 +52,36 @@ export interface Festival {
   created_at: string;
 }
 
+export interface NightViewSpot {
+  id: string;
+  conts_id: string;
+  conts_name: string;
+  theme_name: string;
+  name01: string;
+  name02: string;
+  value01: string;
+  value02: string;
+  image_main_url: string;
+  image_sub_category_url: string;
+  tel: string;
+  addr_old: string;
+  addr_new: string;
+  coord_x: number;
+  coord_y: number;
+  coord_data: {
+    type: string;
+    coordinates: number[];
+  };
+  sub_category_name: string;
+  theme_id: string;
+  sub_category_id: string;
+  created_at: string;
+}
+
 export interface MapLocation {
   id: string;
   name: string;
-  type: 'path' | 'festival';
+  type: 'path' | 'festival' | 'night_view';
   location: { lat: number; lng: number };
   description: string;
   date?: string;
@@ -63,4 +89,6 @@ export interface MapLocation {
   tel?: string;
   imageUrl?: string;
   coordinates?: number[][];
+  contsName?: string; // Original conts_name for filtering
+  themeName?: string; // theme_name for category filtering
 }
