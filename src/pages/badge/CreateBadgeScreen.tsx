@@ -1,17 +1,40 @@
-import { ArrowLeft, MapPin, Camera, Image as ImageIcon, CheckCircle2, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  MapPin,
+  Camera,
+  Image as ImageIcon,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react";
 import { useState } from "react";
+import { Header } from "@/components/common/Header";
+import { Card } from "@/components/common/Card";
+import { Tag } from "@/components/common/Tag";
+import { StyledButton } from "@/components/common/StyledButton";
+import { Textarea } from "@/components/ui/textarea";
 import { ImageWithFallback } from "@/components/common/ImageWithFallback";
+import { cn } from "@/components/ui/utils";
 
 interface CreateBadgeScreenProps {
   onBack: () => void;
   onComplete: () => void;
+  theme?: "light" | "dark";
 }
 
-const SUGGESTED_TAGS = ["#카페투어", "#야경", "#데이트", "#산책", "#뷰맛집", "#한강", "#골목산책"];
+const SUGGESTED_TAGS = [
+  "#카페투어",
+  "#야경",
+  "#데이트",
+  "#산책",
+  "#뷰맛집",
+  "#한강",
+  "#골목산책",
+];
 
-export function CreateBadgeScreen({ onBack, onComplete }: CreateBadgeScreenProps) {
+export function CreateBadgeScreen({
+  onBack,
+  onComplete,
+  theme = "light",
+}: CreateBadgeScreenProps) {
   const [gpsVerified, setGpsVerified] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [photoUploaded, setPhotoUploaded] = useState(false);
@@ -37,161 +60,329 @@ export function CreateBadgeScreen({ onBack, onComplete }: CreateBadgeScreenProps
   const canSubmit = gpsVerified && photoUploaded && description.trim();
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
-      <div className="px-6 py-4 flex items-center gap-3 border-b border-gray-200 bg-white">
-        <button onClick={onBack} className="text-black">
-          <ArrowLeft className="w-6 h-6" strokeWidth={1.5} />
-        </button>
-        <span className="text-black text-lg">새 배지 만들기</span>
-      </div>
+    <div
+      className={cn(
+        "min-h-screen flex flex-col transition-colors",
+        theme === "dark" ? "bg-[#0a0e1a]" : "bg-white"
+      )}
+    >
+      <Header title="새 배지 만들기" onBack={onBack} theme={theme} />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {/* Step 1: GPS Verification */}
-        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+        <Card theme={theme} className="p-5" aria-label="위치 인증 단계">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-sm">
+            <div
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                theme === "dark"
+                  ? "bg-white text-black"
+                  : "bg-black text-white"
+              )}
+              aria-hidden="true"
+            >
               01
             </div>
-            <h3 className="text-black">위치 인증</h3>
+            <h3
+              className={cn(
+                "text-base font-semibold",
+                theme === "dark" ? "text-white" : "text-black"
+              )}
+            >
+              위치 인증
+            </h3>
           </div>
 
           {!gpsVerified ? (
             <>
-              <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+              <Card
+                theme={theme}
+                className="p-4 mb-4"
+                aria-label="GPS 위치 확인"
+              >
                 <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-gray-500" strokeWidth={1.5} />
+                  <MapPin
+                    className={cn(
+                      "w-5 h-5",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
                   <div className="flex-1">
                     {gpsLoading ? (
-                      <p className="text-black text-sm">GPS로 현재 위치 확인중...</p>
+                      <p
+                        className={cn(
+                          "text-sm",
+                          theme === "dark" ? "text-white" : "text-black"
+                        )}
+                      >
+                        GPS로 현재 위치 확인중...
+                      </p>
                     ) : (
-                      <p className="text-gray-600 text-sm">현재 위치를 확인해주세요</p>
+                      <p
+                        className={cn(
+                          "text-sm",
+                          theme === "dark"
+                            ? "text-slate-400"
+                            : "text-gray-600"
+                        )}
+                      >
+                        현재 위치를 확인해주세요
+                      </p>
                     )}
                   </div>
-                  {gpsLoading && <Loader2 className="w-5 h-5 text-black animate-spin" strokeWidth={1.5} />}
+                  {gpsLoading && (
+                    <Loader2
+                      className={cn(
+                        "w-5 h-5 animate-spin",
+                        theme === "dark" ? "text-white" : "text-black"
+                      )}
+                      strokeWidth={1.5}
+                      aria-label="로딩 중"
+                    />
+                  )}
                 </div>
-              </div>
-              <Button
+              </Card>
+              <StyledButton
                 onClick={handleGPSVerify}
                 disabled={gpsLoading}
-                className="w-full bg-gray-900 hover:bg-black text-white rounded-xl"
+                variant="secondary"
+                theme={theme}
+                fullWidth
               >
                 위치 인증하기
-              </Button>
+              </StyledButton>
             </>
           ) : (
-            <div className="bg-white border border-gray-300 rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-[#FF6B35]" strokeWidth={1.5} />
+            <Card
+              theme={theme}
+              className="p-4 flex items-center gap-3"
+              aria-label="위치 인증 완료"
+            >
+              <CheckCircle2
+                className="w-5 h-5 text-[#FF6B35]"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
               <div className="flex-1">
-                <p className="text-black text-sm mb-1">위치 인증 완료 ✓</p>
-                <p className="text-gray-600 text-xs">서울시 마포구 합정동</p>
+                <p
+                  className={cn(
+                    "text-sm font-medium mb-1",
+                    theme === "dark" ? "text-white" : "text-black"
+                  )}
+                >
+                  위치 인증 완료 ✓
+                </p>
+                <p
+                  className={cn(
+                    "text-xs",
+                    theme === "dark" ? "text-slate-400" : "text-gray-600"
+                  )}
+                >
+                  서울시 마포구 합정동
+                </p>
               </div>
-            </div>
+            </Card>
           )}
-        </div>
+        </Card>
 
         {/* Step 2: Photo Upload */}
-        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+        <Card theme={theme} className="p-5" aria-label="사진 업로드 단계">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-sm">
+            <div
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                theme === "dark"
+                  ? "bg-white text-black"
+                  : "bg-black text-white"
+              )}
+              aria-hidden="true"
+            >
               02
             </div>
-            <h3 className="text-black">사진 업로드</h3>
+            <h3
+              className={cn(
+                "text-base font-semibold",
+                theme === "dark" ? "text-white" : "text-black"
+              )}
+            >
+              사진 업로드
+            </h3>
           </div>
 
           {!photoUploaded ? (
             <div className="space-y-3">
-              <div className="aspect-[4/3] bg-white rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-3">
-                <ImageIcon className="w-12 h-12 text-gray-400" strokeWidth={1.5} />
-                <p className="text-gray-500 text-sm">사진을 추가해주세요</p>
+              <div
+                className={cn(
+                  "aspect-[4/3] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-3",
+                  theme === "dark"
+                    ? "bg-slate-800/50 border-slate-600"
+                    : "bg-white border-gray-300"
+                )}
+                aria-label="사진 업로드 영역"
+              >
+                <ImageIcon
+                  className={cn(
+                    "w-12 h-12",
+                    theme === "dark" ? "text-slate-500" : "text-gray-400"
+                  )}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
+                <p
+                  className={cn(
+                    "text-sm",
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  )}
+                >
+                  사진을 추가해주세요
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Button
+                <StyledButton
                   onClick={() => setPhotoUploaded(true)}
-                  className="bg-gray-900 hover:bg-black text-white rounded-xl h-11"
+                  variant="secondary"
+                  theme={theme}
+                  size="md"
+                  aria-label="사진 찍기"
                 >
-                  <Camera className="w-4 h-4 mr-2" strokeWidth={1.5} />
+                  <Camera className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
                   사진 찍기
-                </Button>
-                <Button
+                </StyledButton>
+                <StyledButton
                   onClick={() => setPhotoUploaded(true)}
-                  className="bg-gray-900 hover:bg-black text-white rounded-xl h-11"
+                  variant="secondary"
+                  theme={theme}
+                  size="md"
+                  aria-label="앨범에서 선택"
                 >
-                  <ImageIcon className="w-4 h-4 mr-2" strokeWidth={1.5} />
+                  <ImageIcon className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
                   앨범에서 선택
-                </Button>
+                </StyledButton>
               </div>
             </div>
           ) : (
             <div className="relative">
-              <div className="aspect-[4/3] rounded-xl overflow-hidden border border-gray-200">
+              <div
+                className={cn(
+                  "aspect-[4/3] rounded-xl overflow-hidden border",
+                  theme === "dark" ? "border-slate-700" : "border-gray-200"
+                )}
+              >
                 <ImageWithFallback
                   src="https://images.unsplash.com/photo-1552723690-81d6a52f37de?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxLb3JlYW4lMjBjYWZlJTIwYWVzdGhldGljfGVufDF8fHx8MTc2MzAzNTY0N3ww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
-                  alt="Uploaded photo"
+                  alt="업로드된 사진"
                   className="w-full h-full object-cover"
                 />
               </div>
               <button
                 onClick={() => setPhotoUploaded(false)}
-                className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-black text-sm hover:bg-gray-100 shadow-sm"
+                className={cn(
+                  "absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-all duration-200",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2",
+                  theme === "dark"
+                    ? "bg-slate-800 text-white hover:bg-slate-700"
+                    : "bg-white text-black hover:bg-gray-100"
+                )}
+                aria-label="사진 삭제"
               >
                 ✕
               </button>
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Step 3: Description & Keywords */}
-        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
+        <Card
+          theme={theme}
+          className="p-5"
+          aria-label="설명 및 키워드 입력 단계"
+        >
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-sm">
+            <div
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                theme === "dark"
+                  ? "bg-white text-black"
+                  : "bg-black text-white"
+              )}
+              aria-hidden="true"
+            >
               03
             </div>
-            <h3 className="text-black">설명 & 키워드</h3>
+            <h3
+              className={cn(
+                "text-base font-semibold",
+                theme === "dark" ? "text-white" : "text-black"
+              )}
+            >
+              설명 & 키워드
+            </h3>
           </div>
 
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="이 순간을 한 줄로 기록해보세요."
-            className="mb-4 bg-white border-gray-300 text-black placeholder:text-gray-400 rounded-xl resize-none focus:border-black focus:ring-0"
+            className={cn(
+              "mb-4 rounded-xl resize-none outline-none transition-all duration-200",
+              "focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2",
+              theme === "dark"
+                ? "bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-white focus:bg-slate-900"
+                : "bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-black"
+            )}
             rows={3}
+            aria-label="배지 설명 입력"
           />
 
           <div>
-            <p className="text-gray-600 text-sm mb-3">추천 키워드</p>
+            <p
+              className={cn(
+                "text-sm font-medium mb-3",
+                theme === "dark" ? "text-slate-400" : "text-gray-600"
+              )}
+            >
+              추천 키워드
+            </p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTED_TAGS.map((tag) => {
                 const isSelected = selectedTags.includes(tag);
                 return (
-                  <button
+                  <Tag
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                      isSelected
-                        ? "bg-black text-white"
-                        : "bg-white text-gray-700 border border-gray-300 hover:border-gray-400"
-                    }`}
+                    theme={theme}
+                    selected={isSelected}
+                    aria-pressed={isSelected}
+                    aria-label={`${tag} 키워드`}
                   >
                     {tag}
-                  </button>
+                  </Tag>
                 );
               })}
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Bottom button */}
-      <div className="px-6 pb-10 pt-4 border-t border-gray-100">
-        <Button
+      <div
+        className={cn(
+          "px-6 pb-10 pt-4 border-t",
+          theme === "dark" ? "border-slate-800" : "border-gray-100"
+        )}
+      >
+        <StyledButton
           onClick={onComplete}
           disabled={!canSubmit}
-          className="w-full h-12 bg-[#FF6B35] hover:bg-[#E55A2B] text-white rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+          variant="primary"
+          fullWidth
+          className="h-12"
         >
           AI 배지 생성하기
-        </Button>
+        </StyledButton>
       </div>
     </div>
   );

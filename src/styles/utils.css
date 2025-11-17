@@ -1,0 +1,289 @@
+/* PinSeoul UI Utility Classes */
+
+/* ==================== */
+/* Headers & Navigation */
+/* ==================== */
+
+.app-header {
+  @apply sticky top-0 z-20 backdrop-blur-sm;
+  height: var(--header-height);
+  padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg);
+  padding-top: var(--safe-area-top);
+}
+
+.header-light {
+  @apply bg-white/95 border-b border-gray-200;
+}
+
+.header-dark {
+  @apply bg-[#0a0e1a]/95 border-b border-slate-800;
+}
+
+/* ==================== */
+/* Cards & Containers */
+/* ==================== */
+
+.card-base {
+  @apply rounded-2xl border transition-all duration-200;
+}
+
+.card-light {
+  @apply bg-white border-gray-200 shadow-sm;
+}
+
+.card-dark {
+  @apply bg-slate-900 border-slate-800;
+}
+
+.card-interactive {
+  @apply cursor-pointer hover:shadow-md active:scale-[0.98];
+}
+
+/* ==================== */
+/* Buttons */
+/* ==================== */
+
+.btn-primary {
+  @apply bg-[#FF6B35] hover:bg-[#E55A2B] text-white font-medium rounded-full px-6 py-3 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
+}
+
+.btn-secondary-light {
+  @apply bg-gray-100 hover:bg-gray-200 text-black font-medium rounded-full px-6 py-3 transition-all duration-200;
+}
+
+.btn-secondary-dark {
+  @apply bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-full px-6 py-3 transition-all duration-200;
+}
+
+.btn-outline-light {
+  @apply bg-transparent hover:bg-gray-50 border-2 border-gray-300 text-black font-medium rounded-full px-6 py-3 transition-all duration-200;
+}
+
+.btn-outline-dark {
+  @apply bg-transparent hover:bg-slate-800 border-2 border-slate-600 text-white font-medium rounded-full px-6 py-3 transition-all duration-200;
+}
+
+.btn-icon {
+  @apply w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 active:scale-90;
+}
+
+/* ==================== */
+/* Tags & Badges */
+/* ==================== */
+
+.tag-base {
+  @apply px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer;
+}
+
+.tag-light {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+}
+
+.tag-dark {
+  @apply bg-slate-800 text-slate-300 hover:bg-slate-700;
+}
+
+.tag-selected-light {
+  @apply bg-[#FF6B35]/10 text-[#FF6B35] border-2 border-[#FF6B35];
+}
+
+.tag-selected-dark {
+  @apply bg-[#FF6B35]/20 text-[#FF6B35] border-2 border-[#FF6B35];
+}
+
+/* ==================== */
+/* Form Inputs */
+/* ==================== */
+
+.input-base {
+  @apply w-full rounded-xl border transition-all duration-200 outline-none;
+  padding: var(--spacing-md);
+}
+
+.input-light {
+  @apply bg-gray-50 border-gray-200 text-black placeholder:text-gray-400 focus:border-black focus:bg-white;
+}
+
+.input-dark {
+  @apply bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-white focus:bg-slate-900;
+}
+
+.textarea-base {
+  @apply w-full rounded-xl border transition-all duration-200 outline-none resize-none;
+  padding: var(--spacing-md);
+  min-height: 100px;
+}
+
+/* ==================== */
+/* Floating Action Button */
+/* ==================== */
+
+.fab {
+  @apply fixed bottom-24 right-6 w-14 h-14 bg-[#FF6B35] hover:bg-[#E55A2B] rounded-full flex items-center justify-center shadow-xl transition-all duration-200 active:scale-90 z-50;
+}
+
+/* ==================== */
+/* Modal & Sheets */
+/* ==================== */
+
+.modal-overlay {
+  @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-opacity duration-300;
+}
+
+.bottom-sheet {
+  @apply fixed left-0 right-0 bottom-0 rounded-t-3xl shadow-2xl transition-all duration-300 z-50;
+}
+
+.bottom-sheet-light {
+  @apply bg-white border-t-2 border-gray-200;
+}
+
+.bottom-sheet-dark {
+  @apply bg-[#0a0e1a] border-t-2 border-slate-700;
+}
+
+.bottom-sheet-handle {
+  @apply w-12 h-1 bg-gray-300 dark:bg-slate-600 rounded-full mx-auto;
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* ==================== */
+/* List Items */
+/* ==================== */
+
+.list-item-base {
+  @apply px-6 py-4 flex items-center gap-4 transition-all duration-200 cursor-pointer;
+}
+
+.list-item-light {
+  @apply hover:bg-gray-50 active:bg-gray-100;
+}
+
+.list-item-dark {
+  @apply hover:bg-slate-800/50 active:bg-slate-800;
+}
+
+/* ==================== */
+/* Safe Areas & Spacing */
+/* ==================== */
+
+.safe-top {
+  padding-top: var(--safe-area-top);
+}
+
+.safe-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.section-spacing {
+  padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+}
+
+/* ==================== */
+/* Typography */
+/* ==================== */
+
+.heading-1 {
+  @apply text-3xl font-semibold tracking-tight;
+}
+
+.heading-2 {
+  @apply text-2xl font-semibold;
+}
+
+.heading-3 {
+  @apply text-xl font-medium;
+}
+
+.heading-4 {
+  @apply text-lg font-medium;
+}
+
+.body-text {
+  @apply text-base leading-relaxed;
+}
+
+.caption {
+  @apply text-sm text-gray-600 dark:text-slate-400;
+}
+
+.label {
+  @apply text-sm font-medium;
+}
+
+/* ==================== */
+/* Animations */
+/* ==================== */
+
+.fade-in {
+  animation: fadeIn var(--transition-base);
+}
+
+.slide-up {
+  animation: slideUp var(--transition-slow);
+}
+
+.scale-in {
+  animation: scaleIn var(--transition-fast);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ==================== */
+/* Accessibility */
+/* ==================== */
+
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2;
+}
+
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  clip: rect(0, 0, 0, 0);
+}
+
+/* ==================== */
+/* Loading States */
+/* ==================== */
+
+.skeleton {
+  @apply animate-pulse bg-gray-200 dark:bg-slate-700 rounded;
+}
+
+.spinner {
+  @apply animate-spin rounded-full border-2 border-gray-300 border-t-[#FF6B35];
+}
