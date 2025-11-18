@@ -1,5 +1,6 @@
 import { MapPin, Plus, User, Navigation } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { loadNaverMapsScript } from "@/utils/loadNaverMaps";
 import { BadgeDetailScreen } from "../badge/BadgeDetailScreen";
 import { PlaceDetailModal } from "./components/PlaceDetailModal";
@@ -7,6 +8,7 @@ import { FloatingPanel, type FloatingPanelRef, JumboTabs, Toast } from "antd-mob
 import { fetchAllLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types/location";
 import { HomeLoading } from "@/pages/home/Loading/HomeLoading";
+import { useAppStore } from "@/store/useAppStore";
 
 interface Badge {
   id: number;
@@ -24,7 +26,9 @@ interface HomeMapScreenProps {
 }
 
 export function Home({ onNavigate, theme }: HomeMapScreenProps) {
+  const navigate = useNavigate();
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [selectedBadgeImage, setSelectedBadgeImage] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false);
@@ -38,8 +42,11 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
   const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 내 배지로 표시할 장소들 (conts_name 기준) - state로 관리
-  const [myBadges, setMyBadges] = useState<string[]>(['창덕궁', '동대문디자인플라자(DDP)', '서울어린이대공원 음악분수']);
+  // Zustand store에서 내 배지 가져오기
+  const myBadgesFromStore = useAppStore((state) => state.myBadges);
+
+  // 내 배지의 contsName 목록 생성 (기존 로직과 호환을 위해)
+  const myBadgeNames = myBadgesFromStore.map(badge => badge.contsName || badge.name);
 
   // AI 추천 목록을 별도 state로 관리하여 리렌더링 시에도 유지
   const [aiRecommendations, setAiRecommendations] = useState<MapLocation[]>([]);
@@ -47,8 +54,25 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
   // 탭에 따라 필터링된 장소 목록
   const filteredLocations = (() => {
     if (activeTab === 'my') {
-      // 내 배지: myBadges에 포함된 장소만
-      return locations.filter(location => myBadges.includes(location.contsName || ''));
+      // 내 배지: Zustand store의 배지를 MapLocation 형식으로 변환
+      const myBadgeLocations: MapLocation[] = myBadgesFromStore.map(badge => ({
+        id: badge.id,
+        name: badge.name,
+        contsName: badge.contsName || badge.name,
+        location: badge.locationCoords || { lat: 37.5665, lng: 126.9780 }, // 기본값: 서울시청
+        description: badge.name,
+        address: badge.location,
+        date: badge.date,
+        type: 'festival' as const, // MapLocation 타입과 호환되도록 festival 사용
+      }));
+
+      // 기존 locations에서 하드코딩된 배지들도 찾아서 병합 (중복 제거)
+      const hardcodedBadges = locations.filter(location =>
+        myBadgeNames.includes(location.contsName || '') &&
+        !myBadgeLocations.some(b => b.contsName === location.contsName)
+      );
+
+      return [...myBadgeLocations, ...hardcodedBadges];
     }
     if (activeTab === 'ai') {
       // AI 추천: 저장된 추천 목록 사용 (리렌더링 시에도 유지)
@@ -228,7 +252,18 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
       // Check if this is one of the 내 배지 locations with custom image
       let badgeImageUrl = '';
       if (activeTab === 'my') {
-        if (location.contsName?.includes('어린이대공원')) {
+        // myBadgesFromStore에서 해당 장소의 이미지 찾기
+        const matchedBadge = myBadgesFromStore.find(badge =>
+          badge.contsName === location.contsName ||
+          badge.name === location.contsName ||
+          badge.location.includes(location.contsName || '')
+        );
+
+        if (matchedBadge && matchedBadge.imageUrl) {
+          badgeImageUrl = matchedBadge.imageUrl;
+        }
+        // 기존 하드코딩된 이미지들 fallback으로 유지 (임시)
+        else if (location.contsName?.includes('어린이대공원')) {
           badgeImageUrl = '/penguin.png';
         } else if (location.contsName?.includes('동대문디자인플라자') || location.contsName === 'DDP') {
           badgeImageUrl = '/ddp.png';
@@ -317,9 +352,15 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
         setSelectedBadge(badge);
         setSelectedLocation(location);
 
-        // myBadges에 있는지 확인하여 다른 모달 열기
-        const isMyBadge = myBadges.includes(location.contsName || '');
+        // myBadgeNames에 있는지 확인하여 다른 모달 열기
+        const isMyBadge = myBadgeNames.includes(location.contsName || '');
         if (isMyBadge) {
+          // 내 배지에서 해당 이미지 찾기
+          const matchedBadge = myBadgesFromStore.find(b =>
+            b.contsName === location.contsName ||
+            b.name === location.contsName
+          );
+          setSelectedBadgeImage(matchedBadge?.imageUrl || null);
           setIsModalOpen(true);
         } else {
           setIsPlaceModalOpen(true);
@@ -330,7 +371,7 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
     });
 
     markersRef.current = newMarkers;
-  }, [mapInitialized, filteredLocations, theme, myBadges]);
+  }, [mapInitialized, filteredLocations, theme, myBadgeNames, myBadgesFromStore]);
 
   useEffect(() => {
     floatingPanelRef.current?.setHeight(320, { immediate: true });
@@ -527,9 +568,15 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
                     setSelectedBadge(badge);
                     setSelectedLocation(location);
 
-                    // myBadges에 있는지 확인하여 다른 모달 열기
-                    const isMyBadge = myBadges.includes(location.contsName || '');
+                    // myBadgeNames에 있는지 확인하여 다른 모달 열기
+                    const isMyBadge = myBadgeNames.includes(location.contsName || '');
                     if (isMyBadge) {
+                      // 내 배지에서 해당 이미지 찾기
+                      const matchedBadge = myBadgesFromStore.find(b =>
+                        b.contsName === location.contsName ||
+                        b.name === location.contsName
+                      );
+                      setSelectedBadgeImage(matchedBadge?.imageUrl || null);
                       setIsModalOpen(true);
                     } else {
                       setIsPlaceModalOpen(true);
@@ -561,7 +608,18 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
                   }`}>
                     {(() => {
                       if (activeTab === 'my') {
-                        if (location.contsName?.includes('어린이대공원')) {
+                        // myBadgesFromStore에서 해당 장소의 이미지 찾기
+                        const matchedBadge = myBadgesFromStore.find(badge =>
+                          badge.contsName === location.contsName ||
+                          badge.name === location.contsName ||
+                          badge.location.includes(location.contsName || '')
+                        );
+
+                        if (matchedBadge && matchedBadge.imageUrl) {
+                          return <img src={matchedBadge.imageUrl} alt={location.name} className="w-full h-full object-cover" />;
+                        }
+                        // 기존 하드코딩된 이미지들 fallback으로 유지 (임시)
+                        else if (location.contsName?.includes('어린이대공원')) {
                           return <img src="/penguin.png" alt={location.name} className="w-full h-full object-cover" />;
                         } else if (location.contsName?.includes('동대문디자인플라자') || location.contsName === 'DDP') {
                           return <img src="/ddp.png" alt={location.name} className="w-full h-full object-cover" />;
@@ -612,10 +670,12 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
       {/* Badge Detail Modal (내 배지용) */}
       <BadgeDetailScreen
         badge={selectedBadge}
+        imageUrl={selectedBadgeImage || undefined}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedBadge(null);
+          setSelectedBadgeImage(null);
         }}
         theme={theme}
       />
@@ -630,9 +690,10 @@ export function Home({ onNavigate, theme }: HomeMapScreenProps) {
           setSelectedBadge(null);
           setSelectedLocation(null);
         }}
-        onVerify={() => {
+        onVerify={(location) => {
           setIsPlaceModalOpen(false);
-          onNavigate("create-badge");
+          // Navigate to create-badge with location data
+          navigate("/create-badge", { state: { selectedLocation: location } });
         }}
         theme={theme}
       />
