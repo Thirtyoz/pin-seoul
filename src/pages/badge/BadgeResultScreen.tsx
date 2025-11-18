@@ -121,7 +121,7 @@ export function BadgeResultScreen({ onSave, onRegenerate }: BadgeResultScreenPro
         </div>
 
         {/* Helper text */}
-        <p className="text-gray-500 text-xs text-center max-w-xs leading-relaxed">
+        <p className="text-gray-500 text-xs text-center max-w-md leading-relaxed">
           업로드한 사진과 위치, 키워드를 기반으로 AI가 배지를 생성했습니다.
         </p>
       </div>

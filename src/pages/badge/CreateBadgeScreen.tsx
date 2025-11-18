@@ -4,7 +4,7 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Header } from "@/components/common/Header";
 import { Card } from "@/components/common/Card";
 import { Tag } from "@/components/common/Tag";
@@ -12,7 +12,8 @@ import { StyledButton } from "@/components/common/StyledButton";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageWithFallback } from "@/components/common/ImageWithFallback";
 import { cn } from "@/components/ui/utils";
-import { generateBadgeImage, createBadgePrompt } from "@/services/geminiImageService";
+import { generateBadgeImage, createBadgePrompt, analyzeImageContent, ImageAnalysisResult, ImageMetadata } from "@/services/geminiImageService";
+import exifr from "exifr";
 
 interface CreateBadgeScreenProps {
   onBack: () => void;
@@ -47,6 +48,10 @@ export function CreateBadgeScreen({
   const [imageGenerating, setImageGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState("");
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<ImageAnalysisResult | null>(null);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiAnalysisProgress, setAiAnalysisProgress] = useState("");
+  const [imageMetadata, setImageMetadata] = useState<ImageMetadata | null>(null);
 
   const handleGPSVerify = () => {
     setGpsLoading(true);
@@ -64,7 +69,7 @@ export function CreateBadgeScreen({
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -74,9 +79,119 @@ export function CreateBadgeScreen({
       return;
     }
 
-    // Create object URL for preview
+    // Create object URL for preview first
     const objectUrl = URL.createObjectURL(file);
     setUploadedImageUrl(objectUrl);
+
+    // Extract and log photo metadata
+    let extractedMetadata: ImageMetadata | undefined;
+    try {
+      const metadata = await exifr.parse(file);
+
+      console.log("=== 📸 사진 메타데이터 ===");
+      console.log("파일명:", file.name);
+      console.log("파일 크기:", (file.size / 1024 / 1024).toFixed(2), "MB");
+      console.log("파일 타입:", file.type);
+      console.log("마지막 수정 시간:", new Date(file.lastModified).toLocaleString('ko-KR'));
+
+      if (metadata) {
+        // Build ImageMetadata object
+        extractedMetadata = {};
+
+        // 사진 촬영 시간
+        if (metadata.DateTimeOriginal || metadata.DateTime || metadata.CreateDate) {
+          const dateTime = metadata.DateTimeOriginal || metadata.DateTime || metadata.CreateDate;
+          extractedMetadata.dateTime = dateTime;
+          console.log("📅 촬영 시간:", dateTime);
+        }
+
+        // GPS 위치 정보 (좌표)
+        if (metadata.latitude && metadata.longitude) {
+          extractedMetadata.latitude = metadata.latitude;
+          extractedMetadata.longitude = metadata.longitude;
+          console.log("📍 GPS 좌표:");
+          console.log("  - 위도 (Latitude):", metadata.latitude);
+          console.log("  - 경도 (Longitude):", metadata.longitude);
+          if (metadata.altitude) {
+            extractedMetadata.altitude = metadata.altitude;
+            console.log("  - 고도 (Altitude):", metadata.altitude, "m");
+          }
+        } else {
+          console.log("📍 GPS 좌표: 정보 없음");
+        }
+
+        // 카메라 정보
+        if (metadata.Make || metadata.Model) {
+          if (metadata.Make) extractedMetadata.make = metadata.Make;
+          if (metadata.Model) extractedMetadata.model = metadata.Model;
+          console.log("📷 카메라 정보:");
+          if (metadata.Make) console.log("  - 제조사:", metadata.Make);
+          if (metadata.Model) console.log("  - 모델:", metadata.Model);
+        }
+
+        // 이미지 크기
+        if (metadata.ImageWidth && metadata.ImageHeight) {
+          console.log("🖼️ 이미지 크기:", `${metadata.ImageWidth} x ${metadata.ImageHeight}px`);
+        }
+
+        // 기타 촬영 정보
+        if (metadata.FNumber) console.log("조리개:", `f/${metadata.FNumber}`);
+        if (metadata.ExposureTime) console.log("셔터 스피드:", metadata.ExposureTime, "초");
+        if (metadata.ISO) console.log("ISO:", metadata.ISO);
+        if (metadata.FocalLength) console.log("초점 거리:", metadata.FocalLength, "mm");
+
+        // 전체 메타데이터 객체
+        console.log("\n📋 전체 메타데이터:", metadata);
+      } else {
+        console.log("⚠️ EXIF 메타데이터를 찾을 수 없습니다.");
+      }
+      console.log("========================\n");
+    } catch (error) {
+      console.error("메타데이터 추출 중 오류:", error);
+    }
+
+    // Store metadata
+    setImageMetadata(extractedMetadata || null);
+
+    // Always run AI analysis (with or without metadata)
+    console.log("🤖 AI 분석을 시작합니다...");
+    setAiAnalyzing(true);
+    setAiAnalysisProgress("AI가 사진을 분석하고 있습니다...");
+
+    try {
+      const analysisResult = await analyzeImageContent(
+        objectUrl,
+        (progress) => {
+          setAiAnalysisProgress(progress);
+        },
+        extractedMetadata
+      );
+
+      console.log("=== 🤖 AI 분석 결과 ===");
+      console.log("위치:", analysisResult.location);
+      console.log("랜드마크:", analysisResult.landmark);
+      console.log("설명:", analysisResult.description);
+      console.log("추천 태그:", analysisResult.tags);
+      console.log("신뢰도:", analysisResult.confidence);
+      console.log("=====================\n");
+
+      setAiAnalysisResult(analysisResult);
+
+      // Auto-fill description and tags from AI analysis
+      if (!description) {
+        setDescription(analysisResult.description);
+      }
+      if (selectedTags.length === 0 && analysisResult.tags.length > 0) {
+        setSelectedTags(analysisResult.tags);
+      }
+
+    } catch (error) {
+      console.error("AI 분석 중 오류:", error);
+      alert("AI 분석에 실패했습니다. 직접 정보를 입력해주세요.");
+    } finally {
+      setAiAnalyzing(false);
+      setAiAnalysisProgress("");
+    }
   };
 
   const canSubmit = gpsVerified && uploadedImageUrl && description.trim();
@@ -104,11 +219,14 @@ export function CreateBadgeScreen({
         },
       });
 
+      // Determine location: use AI analysis result if available, otherwise use default
+      const finalLocation = aiAnalysisResult?.location || "서울시 마포구 합정동";
+
       onComplete({
         imageUrl: result.dataUrl,
         description: description,
         tags: selectedTags,
-        location: "서울시 마포구 합정동",
+        location: finalLocation,
       });
     } catch (error) {
       console.error("Image generation failed:", error);
@@ -247,8 +365,9 @@ export function CreateBadgeScreen({
           )}
         </Card>
 
-        {/* Step 2: Photo Upload */}
-        <Card theme={theme} className="p-5" aria-label="사진 업로드 단계">
+        {/* Step 2: Photo Upload - Show after GPS verification */}
+        {gpsVerified && (
+          <Card theme={theme} className="p-5" aria-label="사진 업로드 단계">
           <div className="flex items-center gap-3 mb-4">
             <div
               className={cn(
@@ -288,21 +407,40 @@ export function CreateBadgeScreen({
                       alt="업로드된 사진"
                       className="w-full h-full object-cover rounded-xl"
                     />
-                    <button
-                      onClick={() => {
-                        setUploadedImageUrl(null);
-                      }}
-                      className={cn(
-                        "absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-all duration-200",
-                        "outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2",
-                        theme === "dark"
-                          ? "bg-slate-800 text-white hover:bg-slate-700"
-                          : "bg-white text-black hover:bg-gray-100"
-                      )}
-                      aria-label="사진 삭제"
-                    >
-                      ✕
-                    </button>
+                    {/* AI Analyzing Overlay */}
+                    {aiAnalyzing && (
+                      <div className="absolute inset-0 bg-black/60 rounded-xl flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+                        <Loader2
+                          className="w-12 h-12 animate-spin text-white"
+                          strokeWidth={1.5}
+                          aria-label="분석 중"
+                        />
+                        <p className="text-white text-sm font-medium px-4 text-center">
+                          {aiAnalysisProgress}
+                        </p>
+                      </div>
+                    )}
+                    {!aiAnalyzing && (
+                      <button
+                        onClick={() => {
+                          setUploadedImageUrl(null);
+                          setAiAnalysisResult(null);
+                          setImageMetadata(null);
+                          setDescription("");
+                          setSelectedTags([]);
+                        }}
+                        className={cn(
+                          "absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-all duration-200",
+                          "outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2",
+                          theme === "dark"
+                            ? "bg-slate-800 text-white hover:bg-slate-700"
+                            : "bg-white text-black hover:bg-gray-100"
+                        )}
+                        aria-label="사진 삭제"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </>
                 ) : (
                   <>
@@ -330,7 +468,7 @@ export function CreateBadgeScreen({
                 accept="image/*"
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
-                disabled={imageGenerating}
+                disabled={!gpsVerified || imageGenerating || aiAnalyzing}
                 id="file-upload-input"
               />
               <StyledButton
@@ -338,21 +476,23 @@ export function CreateBadgeScreen({
                 variant="secondary"
                 theme={theme}
                 fullWidth
-                disabled={imageGenerating}
+                disabled={!gpsVerified || imageGenerating || aiAnalyzing}
                 aria-label="앨범에서 선택"
               >
                 <ImageIcon className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
-                앨범에서 선택
+                {!gpsVerified ? "위치 인증 후 업로드 가능" : "앨범에서 선택"}
               </StyledButton>
             </div>
         </Card>
+        )}
 
-        {/* Step 3: Description & Keywords */}
-        <Card
-          theme={theme}
-          className="p-5"
-          aria-label="설명 및 키워드 입력 단계"
-        >
+        {/* Step 3: Description & Keywords - Show after AI analysis is complete */}
+        {gpsVerified && uploadedImageUrl && aiAnalysisResult && (
+          <Card
+            theme={theme}
+            className="p-5"
+            aria-label="설명 및 키워드 입력 단계"
+          >
           <div className="flex items-center gap-3 mb-4">
             <div
               className={cn(
@@ -418,6 +558,7 @@ export function CreateBadgeScreen({
             </div>
           </div>
         </Card>
+        )}
       </div>
 
       {/* Bottom button */}
