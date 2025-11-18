@@ -133,33 +133,51 @@ export function createBadgePrompt(description: string, tags: string[], hasSource
   const tagText = tags.length > 0 ? tags.join(', ') : '';
 
   if (hasSourceImage) {
-    return `Transform this photo into a 3D figurine-style travel souvenir magnet design.
+    return `Transform this photo into a 3D figurine-style travel souvenir sticker/badge design with NO BACKGROUND.
 
 Location/Theme: ${description}
 Keywords: ${tagText}
 
-Style requirements:
-- Remove white borders and background completely (transparent or clean background)
-- Create a cute, collectible figurine aesthetic (like miniature travel souvenirs)
-- Add depth and 3D dimensionality to make it look like a physical object
-- Maintain the essence of the scene but stylize it as a charming collectible item
-- Vibrant, eye-catching colors
-- NOT just a flat photo - transform it into an illustrated, figurine-like object
-- Think: refrigerator magnet souvenir that tourists would buy
-- IMPORTANT: DO NOT include any Korean text, letters, or characters in the image - use English or no text at all
-- If there is Korean text in the source image, replace it with English or remove it completely
+CRITICAL REQUIREMENTS:
+- **NO BACKGROUND AT ALL** - The object must be isolated on a completely transparent/empty background
+- Create ONLY the main subject as a 3D figurine without any surrounding environment
+- Think of it as a die-cut sticker or PNG with transparent background
+- The subject should be the ONLY element - no ground, no sky, no backdrop
+- Like a collectible figurine floating in space
 
-The final result should look like a premium travel souvenir magnet with character and charm.`;
+Style requirements:
+- Transform into a cute, collectible 3D figurine aesthetic (like miniature travel souvenirs)
+- Add depth and 3D dimensionality to make it look like a physical object
+- Stylize as a charming collectible item with vibrant colors
+- Create clear, defined edges suitable for a sticker/badge
+- Think: Premium die-cut travel sticker or enamel pin design
+- The object should appear to "pop out" with no background elements
+- IMPORTANT: DO NOT include any Korean text, letters, or characters - use English or no text at all
+
+The final result should be JUST the figurine object itself with absolutely no background - like a product photo on transparent background.`;
   }
 
-  return `Create a beautiful, artistic badge image for a location in Seoul, South Korea.
+  return `Create a 3D figurine-style collectible badge/sticker for a Seoul location with NO BACKGROUND.
+
 Description: ${description}
 Theme/Tags: ${tagText}
 
-The image should be aesthetic, visually appealing, and suitable as a collectible digital badge.
-Style: Modern, clean, with vibrant colors suitable for mobile app display.
-Format: Square or rounded square composition.
-IMPORTANT: DO NOT include any Korean text, letters, or characters in the image - use English or no text at all.`;
+CRITICAL REQUIREMENTS:
+- **NO BACKGROUND AT ALL** - Create ONLY the main subject on transparent/empty background
+- Design as an isolated 3D object like a die-cut sticker or enamel pin
+- The subject should float with no ground, sky, or environment
+- Think PNG with transparent background or product photo style
+
+Style requirements:
+- 3D figurine aesthetic - like miniature collectible souvenirs
+- Clear, defined edges suitable for a badge/sticker
+- Vibrant, eye-catching colors that pop
+- Modern, clean design with depth and dimension
+- The object should appear three-dimensional and tactile
+- Like a premium travel sticker or collectible pin design
+- IMPORTANT: DO NOT include any Korean text, letters, or characters - use English or no text at all
+
+The final result should be JUST the main object itself floating on transparent background.`;
 }
 
 /**
