@@ -5,6 +5,7 @@ import { BadgeDetailScreen } from "../badge/BadgeDetailScreen";
 import { FloatingPanel, type FloatingPanelRef, JumboTabs } from "antd-mobile";
 import { fetchAllLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types/location";
+import { HomeLoading } from "@/pages/home/Loading/HomeLoading";
 
 interface Badge {
   id: number;
@@ -18,11 +19,10 @@ interface Badge {
 
 interface HomeMapScreenProps {
   onNavigate: (screen: string) => void;
-  userNickname: string;
   theme: "light" | "dark";
 }
 
-export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreenProps) {
+export function Home({ onNavigate, theme }: HomeMapScreenProps) {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
@@ -31,18 +31,7 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
   const markersRef = useRef<naver.maps.Marker[]>([]);
   const floatingPanelRef = useRef<FloatingPanelRef>(null);
 
-  const [locations, setLocations] = useState<MapLocation[]>([
-    {
-      id: '1',
-      name: '남산타워',
-      type: 'festival',
-      location: { lat: 37.5512, lng: 126.9882 },
-      description: '서울의 대표적인 랜드마크',
-      address: '서울특별시 용산구 남산공원길 105',
-      date: '2024.11.14',
-      imageUrl: '/penguin.png'
-    }
-  ]);
+  const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // 내 배지로 표시할 장소들 (conts_name 기준)
@@ -341,15 +330,14 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
         <div className="absolute top-4 left-0 right-0 z-10">
           <JumboTabs
             activeKey={activeTab}
-            onChange={(key) => setActiveTab(key)}
+            onChange={(key: string) => setActiveTab(key)}
             className="category-tabs"
           >
-            <JumboTabs.Tab title='내 배지' key='all' />
-            <JumboTabs.Tab title='AI추천' key='ai' />
-            <JumboTabs.Tab title='야경' key='night' />
-            <JumboTabs.Tab title='단풍길' key='autumn' />
-            <JumboTabs.Tab title='축제' key='festival' />
-            
+            <JumboTabs.Tab title="내 배지" description="" key="all" />
+            <JumboTabs.Tab title="AI추천" description="" key="ai" />
+            <JumboTabs.Tab title="야경" description="" key="night" />
+            <JumboTabs.Tab title="단풍길" description="" key="autumn" />
+            <JumboTabs.Tab title="축제" description="" key="festival" />
           </JumboTabs>
         </div>
 
@@ -394,20 +382,28 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
           <div className={`px-6 pb-3 flex items-center justify-between ${
             theme === "dark" ? "text-white" : "text-black"
           }`}>
-            <h3>서울 명소</h3>
-            <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-              {isLoading ? '로딩 중...' : `${filteredLocations.length}개`}
-            </span>
+            <h3>
+              {activeTab === 'all' ? '내 배지' :
+               activeTab === 'ai' ? 'AI추천' :
+               activeTab === 'night' ? '야경' :
+               activeTab === 'autumn' ? '단풍길' :
+               activeTab === 'festival' ? '축제' : '서울 명소'}
+            </h3>
+            {isLoading ? (
+              <div className={`h-5 w-12 rounded animate-pulse ${
+                theme === "dark" ? "bg-slate-700" : "bg-gray-200"
+              }`} />
+            ) : (
+              <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
+                {filteredLocations.length}개
+              </span>
+            )}
           </div>
 
           {/* Location list */}
           <div className="px-6 pb-6 space-y-3 overflow-y-auto" style={{ maxHeight: '60vh' }}>
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                  데이터를 불러오는 중...
-                </div>
-              </div>
+              <HomeLoading theme={theme} count={5} />
             ) : filteredLocations.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
