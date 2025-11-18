@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import {
   LoginScreen,
   OnboardingScreen,
-  HomeMapScreen,
+  Home,
   BadgeDetailScreen,
   CreateBadgeScreen,
   BadgeResultScreen,
@@ -35,7 +35,7 @@ const routeDefinitions: RouteDefinition[] = [
   },
   {
     path: "/",
-    component: HomeMapScreen,
+    component: Home,
     withLayout: true,
     guards: ["requireUser"],
     getProps: ({ theme, navigate, userInfo }) => ({

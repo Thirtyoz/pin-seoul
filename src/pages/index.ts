@@ -3,7 +3,7 @@ export { LoginScreen } from './auth/LoginScreen';
 export { OnboardingScreen } from './auth/OnboardingScreen';
 
 // Home
-export { HomeMapScreen } from './home/HomeMapScreen';
+export { Home } from './home/Home';
 
 // Badge pages
 export { BadgeDetailScreen } from './badge/BadgeDetailScreen';

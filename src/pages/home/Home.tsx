@@ -1,10 +1,12 @@
-import { MapPin, Plus, User, Sparkles, Navigation } from "lucide-react";
+import { MapPin, Plus, User, Navigation } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { loadNaverMapsScript } from "@/utils/loadNaverMaps";
 import { BadgeDetailScreen } from "../badge/BadgeDetailScreen";
-import { FloatingPanel, type FloatingPanelRef, JumboTabs } from "antd-mobile";
+import { PlaceDetailModal } from "./components/PlaceDetailModal";
+import { FloatingPanel, type FloatingPanelRef, JumboTabs, Toast } from "antd-mobile";
 import { fetchAllLocations } from "@/services/locationService";
 import type { MapLocation } from "@/types/location";
+import { HomeLoading } from "@/pages/home/Loading/HomeLoading";
 
 interface Badge {
   id: number;
@@ -18,41 +20,32 @@ interface Badge {
 
 interface HomeMapScreenProps {
   onNavigate: (screen: string) => void;
-  userNickname: string;
   theme: "light" | "dark";
 }
 
-export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreenProps) {
+export function Home({ onNavigate, theme }: HomeMapScreenProps) {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('all');
+  const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('my');
+  const [panelHeight, setPanelHeight] = useState(320);
   const mapRef = useRef<HTMLDivElement>(null);
   const naverMapRef = useRef<naver.maps.Map | null>(null);
   const markersRef = useRef<naver.maps.Marker[]>([]);
   const floatingPanelRef = useRef<FloatingPanelRef>(null);
 
-  const [locations, setLocations] = useState<MapLocation[]>([
-    {
-      id: '1',
-      name: '남산타워',
-      type: 'festival',
-      location: { lat: 37.5512, lng: 126.9882 },
-      description: '서울의 대표적인 랜드마크',
-      address: '서울특별시 용산구 남산공원길 105',
-      date: '2024.11.14',
-      imageUrl: '/penguin.png'
-    }
-  ]);
+  const [locations, setLocations] = useState<MapLocation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 내 배지로 표시할 장소들 (conts_name 기준)
-  const MY_BADGES = ['창덕궁', '동대문디자인플라자(DDP)', '서울어린이대공원 음악분수'];
+  // 내 배지로 표시할 장소들 (conts_name 기준) - state로 관리
+  const [myBadges, setMyBadges] = useState<string[]>(['창덕궁', '동대문디자인플라자(DDP)', '서울어린이대공원 음악분수']);
 
   // 탭에 따라 필터링된 장소 목록
   const filteredLocations = (() => {
-    if (activeTab === 'all') {
-      // 내 배지: MY_BADGES에 포함된 장소만
-      return locations.filter(location => MY_BADGES.includes(location.contsName || ''));
+    if (activeTab === 'my') {
+      // 내 배지: myBadges에 포함된 장소만
+      return locations.filter(location => myBadges.includes(location.contsName || ''));
     }
     if (activeTab === 'ai') {
       // AI 추천: 랜덤으로 40개 선택
@@ -188,6 +181,23 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
     };
   }, []);
 
+  // Remove default NAVER logo overlay
+  useEffect(() => {
+    if (!mapInitialized || !mapRef.current) return;
+
+    const hideLogo = () => {
+      const logoAnchor = mapRef.current?.querySelector<HTMLAnchorElement>('a[href*="legal.html"]');
+      logoAnchor?.parentElement?.remove();
+    };
+
+    hideLogo();
+
+    const observer = new MutationObserver(() => hideLogo());
+    observer.observe(mapRef.current, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [mapInitialized]);
+
   // Add markers when map is initialized and locations are loaded
   useEffect(() => {
     if (!mapInitialized || !naverMapRef.current || !window.naver || filteredLocations.length === 0) {
@@ -205,7 +215,7 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
     const newMarkers = filteredLocations.map((location) => {
       // Check if this is one of the 내 배지 locations with custom image
       let badgeImageUrl = '';
-      if (activeTab === 'all') {
+      if (activeTab === 'my') {
         if (location.contsName?.includes('어린이대공원')) {
           badgeImageUrl = '/penguin.png';
         } else if (location.contsName?.includes('동대문디자인플라자') || location.contsName === 'DDP') {
@@ -293,18 +303,77 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
         };
 
         setSelectedBadge(badge);
-        setIsModalOpen(true);
+        setSelectedLocation(location);
+
+        // myBadges에 있는지 확인하여 다른 모달 열기
+        const isMyBadge = myBadges.includes(location.contsName || '');
+        if (isMyBadge) {
+          setIsModalOpen(true);
+        } else {
+          setIsPlaceModalOpen(true);
+        }
       });
 
       return marker;
     });
 
     markersRef.current = newMarkers;
-  }, [mapInitialized, filteredLocations, theme, setSelectedBadge, setIsModalOpen]);
+  }, [mapInitialized, filteredLocations, theme, myBadges]);
 
   useEffect(() => {
     floatingPanelRef.current?.setHeight(320, { immediate: true });
   }, []);
+
+  // 내 위치로 이동하는 함수
+  const handleMoveToMyLocation = () => {
+    if (navigator.geolocation && naverMapRef.current) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log(latitude,longitude)
+
+          // 서울 경계 체크
+          const SEOUL_MIN_LAT = 37.413294;
+          const SEOUL_MAX_LAT = 37.715133;
+          const SEOUL_MIN_LNG = 126.734086;
+          const SEOUL_MAX_LNG = 127.269311;
+
+          // 현재 위치가 서울 경계 내에 있는지 확인
+          const isInSeoul =
+            latitude >= SEOUL_MIN_LAT &&
+            latitude <= SEOUL_MAX_LAT &&
+            longitude >= SEOUL_MIN_LNG &&
+            longitude <= SEOUL_MAX_LNG;
+
+          console.log(isInSeoul)
+
+          if (!isInSeoul) {
+            Toast.show({
+              content: <div style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>서울시 내에서만 이용이 가능합니다</div>,
+              position: 'top',
+              icon: 'fail',
+              duration: 2000,
+              getContainer: () => document.body,
+            })
+            return;
+          }
+
+          naverMapRef.current?.setCenter(new naver.maps.LatLng(latitude, longitude));
+          naverMapRef.current?.setZoom(15);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          Toast.show({
+            content: <div style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>위치 정보를 가져올 수 없습니다</div>,
+            position: 'top',
+            icon: 'fail',
+            duration: 2000,
+            getContainer: () => document.body,
+          })
+        }
+      );
+    }
+  };
 
   return (
     <div className={`h-screen flex flex-col overflow-hidden ${
@@ -335,79 +404,78 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
         {/* Naver Map Container */}
         <div id="map" ref={mapRef} className="absolute inset-0 w-full h-full" />
 
-
-
         {/* Category Tabs */}
         <div className="absolute top-4 left-0 right-0 z-10">
           <JumboTabs
             activeKey={activeTab}
-            onChange={(key) => setActiveTab(key)}
+            onChange={(key: string) => setActiveTab(key)}
             className="category-tabs"
           >
-            <JumboTabs.Tab title='내 배지' key='all' />
-            <JumboTabs.Tab title='AI추천' key='ai' />
-            <JumboTabs.Tab title='야경' key='night' />
-            <JumboTabs.Tab title='단풍길' key='autumn' />
-            <JumboTabs.Tab title='축제' key='festival' />
-            
+            <JumboTabs.Tab title="내 배지" description="" key="my" />
+            <JumboTabs.Tab title="AI추천" description="" key="ai" />
+            <JumboTabs.Tab title="야경" description="" key="night" />
+            <JumboTabs.Tab title="단풍길" description="" key="autumn" />
+            <JumboTabs.Tab title="축제" description="" key="festival" />
           </JumboTabs>
         </div>
 
-        {/* My Location button */}
+        {/* My Location button - FloatingPanel 위에 동적으로 위치 */}
         <button
-          onClick={() => {
-            if (navigator.geolocation && naverMapRef.current) {
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  const { latitude, longitude } = position.coords;
-                  naverMapRef.current?.setCenter(new naver.maps.LatLng(latitude, longitude));
-                  naverMapRef.current?.setZoom(15);
-                },
-                (error) => {
-                  console.error('Error getting location:', error);
-                  alert('위치 정보를 가져올 수 없습니다.');
-                }
-              );
-            }
+          onClick={handleMoveToMyLocation}
+          style={{
+            bottom: `${panelHeight + 16}px`,
+            transition: 'bottom 0s'
           }}
-          className={`absolute bottom-24 right-6 w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-all duration-200 z-10 ${
-            theme === "dark" ? "bg-slate-800 text-white" : "bg-white text-black"
+          className={`absolute right-6 w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 z-40 ${
+            theme === "dark" ? "bg-slate-800 text-white hover:bg-slate-700 active:bg-slate-900" : "bg-white text-black hover:bg-gray-50 active:bg-gray-100"
           }`}
         >
           <Navigation className="w-5 h-5" strokeWidth={1.5} />
         </button>
 
         {/* Floating action button */}
-        <button
+        {/* <button
           onClick={() => onNavigate("create-badge")}
           className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-[#FF6B35] shadow-sm flex items-center justify-center group hover:bg-[#E55A2B] transition-all duration-200 z-10"
         >
           <Plus className="w-7 h-7 text-white group-hover:rotate-90 transition-transform duration-300" strokeWidth={1.5} />
-        </button>
+        </button> */}
 
         {/* FloatingPanel with location list */}
         <FloatingPanel
           ref={floatingPanelRef}
           anchors={[120, 320, window.innerHeight - 80]}
           className={theme === "dark" ? "floating-panel-dark" : "floating-panel-light"}
+          onHeightChange={(height) => {
+            setPanelHeight(height);
+          }}
         >
+
           <div className={`px-6 pb-3 flex items-center justify-between ${
             theme === "dark" ? "text-white" : "text-black"
           }`}>
-            <h3>서울 명소</h3>
-            <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-              {isLoading ? '로딩 중...' : `${filteredLocations.length}개`}
-            </span>
+            <h3>
+              {activeTab === 'my' ? '내 배지' :
+               activeTab === 'ai' ? 'AI추천' :
+               activeTab === 'night' ? '야경' :
+               activeTab === 'autumn' ? '단풍길' :
+               activeTab === 'festival' ? '축제' : '서울 명소'}
+            </h3>
+            {isLoading ? (
+              <div className={`h-5 w-12 rounded animate-pulse ${
+                theme === "dark" ? "bg-slate-700" : "bg-gray-200"
+              }`} />
+            ) : (
+              <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
+                {filteredLocations.length}개
+              </span>
+            )}
           </div>
 
           {/* Location list */}
           <div className="px-6 pb-6 space-y-3 overflow-y-auto" style={{ maxHeight: '60vh' }}>
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                  데이터를 불러오는 중...
-                </div>
-              </div>
+              <HomeLoading theme={theme} count={5} />
             ) : filteredLocations.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <div className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
@@ -445,7 +513,15 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
                     };
 
                     setSelectedBadge(badge);
-                    setIsModalOpen(true);
+                    setSelectedLocation(location);
+
+                    // myBadges에 있는지 확인하여 다른 모달 열기
+                    const isMyBadge = myBadges.includes(location.contsName || '');
+                    if (isMyBadge) {
+                      setIsModalOpen(true);
+                    } else {
+                      setIsPlaceModalOpen(true);
+                    }
 
                     if (naverMapRef.current) {
                       naverMapRef.current.setCenter(
@@ -463,7 +539,7 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
                   {/* Location image */}
                   <div className={`w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden shadow-lg ${
                     // 내 배지 탭이고 커스텀 이미지가 있는 경우 배경 흰색
-                    activeTab === 'all' && (location.contsName?.includes('어린이대공원') || location.contsName?.includes('동대문디자인플라자') || location.contsName?.includes('창덕궁'))
+                    activeTab === 'my' && (location.contsName?.includes('어린이대공원') || location.contsName?.includes('동대문디자인플라자') || location.contsName?.includes('창덕궁'))
                       ? 'bg-white'
                       : location.type === 'path'
                       ? 'bg-gradient-to-br from-green-400 to-green-600'
@@ -472,7 +548,7 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
                       : 'bg-gradient-to-br from-orange-400 to-orange-600'
                   }`}>
                     {(() => {
-                      if (activeTab === 'all') {
+                      if (activeTab === 'my') {
                         if (location.contsName?.includes('어린이대공원')) {
                           return <img src="/penguin.png" alt={location.name} className="w-full h-full object-cover" />;
                         } else if (location.contsName?.includes('동대문디자인플라자') || location.contsName === 'DDP') {
@@ -521,13 +597,30 @@ export function HomeMapScreen({ onNavigate, userNickname, theme }: HomeMapScreen
         </FloatingPanel>
       </div>
 
-      {/* Badge Detail Modal */}
+      {/* Badge Detail Modal (내 배지용) */}
       <BadgeDetailScreen
         badge={selectedBadge}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedBadge(null);
+        }}
+        theme={theme}
+      />
+
+      {/* Place Detail Modal (일반 장소용) */}
+      <PlaceDetailModal
+        badge={selectedBadge}
+        location={selectedLocation}
+        isOpen={isPlaceModalOpen}
+        onClose={() => {
+          setIsPlaceModalOpen(false);
+          setSelectedBadge(null);
+          setSelectedLocation(null);
+        }}
+        onVerify={() => {
+          setIsPlaceModalOpen(false);
+          onNavigate("create-badge");
         }}
         theme={theme}
       />
