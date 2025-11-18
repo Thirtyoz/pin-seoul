@@ -18,9 +18,10 @@ interface BadgeDetailScreenProps {
   isOpen: boolean;
   onClose: () => void;
   theme: "light" | "dark";
+  imageUrl?: string; // 실제 배지 이미지 URL 추가
 }
 
-export function BadgeDetailScreen({ badge, isOpen, onClose, theme }: BadgeDetailScreenProps) {
+export function BadgeDetailScreen({ badge, isOpen, onClose, theme, imageUrl }: BadgeDetailScreenProps) {
   const [isSpinModalOpen, setIsSpinModalOpen] = useState(false);
 
   if (!isOpen || !badge) return null;
@@ -77,7 +78,7 @@ export function BadgeDetailScreen({ badge, isOpen, onClose, theme }: BadgeDetail
                 }`}
               >
                 <img
-                  src="/penguin.png"
+                  src={imageUrl || "/penguin.png"}
                   alt={badge.name}
                   className="w-full h-full object-cover"
                 />
@@ -204,7 +205,7 @@ export function BadgeDetailScreen({ badge, isOpen, onClose, theme }: BadgeDetail
       <SpinImageModal
         isOpen={isSpinModalOpen}
         onClose={() => setIsSpinModalOpen(false)}
-        imageUrl="/penguin.png"
+        imageUrl={imageUrl || "/penguin.png"}
         imageName={badge.name}
         theme={theme}
       />

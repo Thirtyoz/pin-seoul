@@ -2,6 +2,7 @@ import { MapPin, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "react-router-dom";
 import { ImageWithFallback } from "@/components/common/ImageWithFallback";
+import { useAppStore, UserBadge } from "@/store/useAppStore";
 
 interface BadgeResultScreenProps {
   onSave: () => void;
@@ -13,11 +14,13 @@ interface BadgeData {
   description: string;
   tags: string[];
   location: string;
+  locationCoords?: { lat: number; lng: number };
 }
 
 export function BadgeResultScreen({ onSave, onRegenerate }: BadgeResultScreenProps) {
   const location = useLocation();
   const badgeData = location.state as BadgeData | null;
+  const addBadge = useAppStore((state) => state.addBadge);
 
   // Default data if no state passed
   const imageUrl = badgeData?.imageUrl || "";
@@ -25,35 +28,45 @@ export function BadgeResultScreen({ onSave, onRegenerate }: BadgeResultScreenPro
   const tags = badgeData?.tags || ["#카페투어", "#힙한동네", "#데이트"];
   const locationText = badgeData?.location || "서울시 마포구 합정동";
 
-  const handleSave = async () => {
-    if (!imageUrl) {
-      alert("저장할 이미지가 없습니다.");
+  const handleSave = () => {
+    if (!badgeData) {
+      alert("저장할 배지 데이터가 없습니다.");
       return;
     }
 
-    try {
-      // Fetch the image as blob
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
+    // 위치에서 주요 장소명 추출 (마지막 부분 또는 전체)
+    // 예: "서울시 마포구 합정동" -> "합정동"
+    // 예: "경복궁" -> "경복궁"
+    const extractContsName = (location: string) => {
+      const parts = location.split(' ');
+      // 만약 짧은 이름이면 그대로 사용, 긴 주소면 마지막 부분 사용
+      if (parts.length === 1) {
+        return location;
+      }
+      // "서울시 마포구 합정동" 같은 경우 "합정동" 추출
+      return parts[parts.length - 1];
+    };
 
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `pinseoul-badge-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
+    // 새로운 배지 데이터 생성
+    const newBadge: UserBadge = {
+      id: `badge-${Date.now()}`,
+      name: locationText,  // 장소명을 name으로 저장
+      location: locationText,
+      locationCoords: badgeData.locationCoords, // GPS 좌표 저장
+      date: new Date().toLocaleDateString('ko-KR'),
+      tags: tags,
+      imageUrl: imageUrl,
+      contsName: extractContsName(locationText),
+      description: description, // 설명은 별도로 저장 (필요 시)
+    };
 
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+    // Zustand store에 배지 추가
+    addBadge(newBadge);
 
-      // Call the original onSave callback
-      onSave();
-    } catch (error) {
-      console.error("Failed to download image:", error);
-      alert("이미지 다운로드에 실패했습니다.");
-    }
+    console.log('배지가 저장되었습니다:', newBadge);
+
+    // 홈으로 이동
+    onSave();
   };
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -132,7 +145,7 @@ export function BadgeResultScreen({ onSave, onRegenerate }: BadgeResultScreenPro
           onClick={handleSave}
           className="w-full h-12 bg-[#FF6B35] hover:bg-[#E55A2B] text-white rounded-full"
         >
-          저장하기
+          내 배지에 추가하기
         </Button>
         <Button
           onClick={onRegenerate}
