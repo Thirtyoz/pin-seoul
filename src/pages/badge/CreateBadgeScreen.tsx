@@ -5,6 +5,7 @@ import {
   Loader2,
 } from "lucide-react";
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Header } from "@/components/common/Header";
 import { Card } from "@/components/common/Card";
 import { Tag } from "@/components/common/Tag";
@@ -13,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageWithFallback } from "@/components/common/ImageWithFallback";
 import { cn } from "@/components/ui/utils";
 import { generateBadgeImage, createBadgePrompt, analyzeImageContent, ImageAnalysisResult, ImageMetadata } from "@/services/geminiImageService";
+import type { MapLocation } from "@/types/location";
 import exifr from "exifr";
 
 interface CreateBadgeScreenProps {
@@ -22,6 +24,7 @@ interface CreateBadgeScreenProps {
     description: string;
     tags: string[];
     location: string;
+    locationCoords?: { lat: number; lng: number };
   }) => void;
   theme?: "light" | "dark";
 }
@@ -41,6 +44,9 @@ export function CreateBadgeScreen({
   onComplete,
   theme = "light",
 }: CreateBadgeScreenProps) {
+  const location = useLocation();
+  const selectedLocation = location.state?.selectedLocation as MapLocation | undefined;
+
   const [gpsVerified, setGpsVerified] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [description, setDescription] = useState("");
@@ -219,14 +225,24 @@ export function CreateBadgeScreen({
         },
       });
 
-      // Determine location: use AI analysis result if available, otherwise use default
-      const finalLocation = aiAnalysisResult?.location || "서울시 마포구 합정동";
+      // Determine location: use selectedLocation first, then AI analysis result, then default
+      const finalLocation = selectedLocation?.name ||
+                          selectedLocation?.contsName ||
+                          aiAnalysisResult?.location ||
+                          "서울시 마포구 합정동";
+
+      // Use GPS coordinates from selectedLocation if available
+      const finalLocationCoords = selectedLocation?.location ||
+                                 (imageMetadata?.latitude && imageMetadata?.longitude ?
+                                   { lat: imageMetadata.latitude, lng: imageMetadata.longitude } :
+                                   undefined);
 
       onComplete({
         imageUrl: result.dataUrl,
         description: description,
         tags: selectedTags,
         location: finalLocation,
+        locationCoords: finalLocationCoords,
       });
     } catch (error) {
       console.error("Image generation failed:", error);
@@ -358,7 +374,7 @@ export function CreateBadgeScreen({
                     theme === "dark" ? "text-slate-400" : "text-gray-600"
                   )}
                 >
-                  서울시 마포구 합정동
+                  {selectedLocation?.name || selectedLocation?.contsName || "서울시 마포구 합정동"}
                 </p>
               </div>
             </Card>

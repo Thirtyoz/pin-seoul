@@ -17,7 +17,7 @@ interface PlaceDetailModalProps {
   location: MapLocation | null;
   isOpen: boolean;
   onClose: () => void;
-  onVerify: () => void;
+  onVerify: (location: MapLocation) => void;
   theme: "light" | "dark";
 }
 
@@ -222,7 +222,7 @@ export function PlaceDetailModal({ badge, location, isOpen, onClose, onVerify, t
           theme === "dark" ? "border-slate-800" : "border-gray-100"
         }`}>
           <Button
-            onClick={onVerify}
+            onClick={() => onVerify(location!)}
             className="w-full h-12 rounded-full bg-[#FF6B35] hover:bg-[#E55A2B] text-white"
           >
             인증하기
